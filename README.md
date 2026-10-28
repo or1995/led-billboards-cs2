@@ -12,7 +12,7 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
 
 > ⚠️ **Experimental: use at your own risk and back up your saves.**
 >
-> Status: work in progress (v0.2). Tested on game version 1.6.2 (PC / Xbox app). Not on Paradox Mods yet.
+> Status: work in progress (v0.2). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
 > Built with the help of [Claude](https://claude.com/claude-code).
 
 ## Features
@@ -41,9 +41,9 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
    `%USERPROFILE%\AppData\LocalLow\Colossal Order\Cities Skylines II\Mods\LedScreens`
 3. Start the game and enable **LED Screens** in your mod list if it isn't already.
 
-### Paradox Mods
+### Paradox Mods (recommended)
 
-Not published yet.
+Subscribe on **[Paradox Mods: LED Billboards (WIP)](https://mods.paradoxplaza.com/mods/165337/Windows)**, or search for *LED Billboards* in the in-game Paradox Mods browser.
 
 ## How to use
 
