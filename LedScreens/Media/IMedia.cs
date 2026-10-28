@@ -10,6 +10,9 @@ namespace LedScreens.Media
 
         float LastUsedTime { get; set; }
 
+        /// <summary>Extra brightness, e.g. to make up for the dark gaps of the LED-dots effect.</summary>
+        float BrightnessScale { get; }
+
         /// <summary>The texture to show at this time, or null while it isn't ready yet.</summary>
         Texture GetFrame(double time);
     }

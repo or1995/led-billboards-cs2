@@ -75,6 +75,8 @@ Changes apply immediately and are saved with the city.
 | **Open media folder / Reload media** | Manage your files. |
 | **Brightness** | Global brightness for all screens. |
 | **Draw distance** | Screens farther than this aren't drawn. |
+| **LED pixel effect** | *Off*: smooth image. *Pixelated*: sharp square pixels. *LED dots*: each pixel is a round glowing dot with dark gaps, like a real LED screen up close, blending into a smooth image from a distance. Media reloads automatically when you change it. |
+| **LED resolution** | How many LEDs across the media's width (32–320). Lower means bigger, chunkier pixels. LED dots use about 4× more video memory per GIF than *Off* at the same resolution. |
 | **Pole style** | *Auto*: steel poles for medium/large, concrete columns for huge and bigger. *Steel* or *Concrete* forces one style. **Needs a game restart.** |
 | **Max GIF resolution / Max frames per GIF** | Limit memory use. Press *Reload media* after changing. |
 | **Compress textures** | Uses about 4× less video memory at a small quality cost. |
@@ -86,8 +88,20 @@ Changes apply immediately and are saved with the city.
 |---|---|
 | Screen shows grey static ("no signal") | The file is still loading, is missing, or failed to load. Check `Logs\LedScreens.Mod.log`. |
 | A video never plays | Convert it to MP4 (H.264). The log shows `Video '…' failed: …`. |
+| A video stutters or freezes | The mod skips past stalls automatically. For smooth playback, re-encode the video as *H.264 baseline* (command below). |
 | No **LED Screen** section when clicking a screen | `Logs\Modding.log` should contain `Registered UI Module … LedScreens`. If not, reinstall the mod. |
 | Can't find the LED Screens tab | It's inside **Landscaping**, and Landscaping must be unlocked in your city. |
 | Something else | Open an issue with a screenshot and `Logs\LedScreens.Mod.log`. |
 
 Logs are in `%USERPROFILE%\AppData\LocalLow\Colossal Order\Cities Skylines II\Logs`.
+
+### Re-encoding videos for smooth playback
+
+Unity's video decoder on Windows can stall on H.264 files that use B-frames, the default for most downloaded videos. Re-encoding them with [ffmpeg](https://ffmpeg.org/) as *baseline* H.264, without audio, makes them play smoothly and saves space:
+
+```
+ffmpeg -i input.mp4 -c:v libx264 -profile:v baseline -level 3.1 -pix_fmt yuv420p -vf "scale=640:-2" -an -movflags +faststart output.mp4
+```
+
+- `scale=640:-2` makes the video 640 px wide, plenty for an LED screen. Use `scale=1024:-2` for the biggest screens.
+- `-an` removes the audio track, which screens don't play anyway.

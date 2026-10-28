@@ -11,6 +11,9 @@ namespace LedScreens.Media
         public int Height;
         public readonly List<Color32[]> Frames = new List<Color32[]>();
         public readonly List<float> Delays = new List<float>();
+
+        /// <summary>Show with sharp (nearest) filtering, for the pixelated LED effect.</summary>
+        public bool PointFilter;
     }
 
     /// <summary>

@@ -9,9 +9,10 @@ namespace LedScreens.Media
         private readonly Texture[] m_Frames;
         private readonly float[] m_FrameEnds;
 
-        public MediaClip(string name, Texture[] frames, float[] delays)
+        public MediaClip(string name, Texture[] frames, float[] delays, float brightnessScale = 1f)
         {
             Name = name;
+            BrightnessScale = brightnessScale;
             m_Frames = frames;
             m_FrameEnds = new float[delays.Length];
             float time = 0f;
@@ -36,6 +37,8 @@ namespace LedScreens.Media
         public int FrameCount => m_Frames.Length;
 
         public float LastUsedTime { get; set; }
+
+        public float BrightnessScale { get; }
 
         /// <summary>Estimated GPU memory (the profiler API returns 0 in release builds).</summary>
         public long MemoryBytes

@@ -18,6 +18,7 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
   - **Video**: MP4, WebM, MOV, M4V, AVI, WMV, OGV. Videos loop and are muted.
 - **Per-screen controls** in the info panel when you click a screen: media, speed, brightness, sync / random start.
 - **Playlists:** a screen can cycle through several files **in order** or **shuffled**, switching every 2–120 seconds.
+- **Realistic LED look (optional):** a *Pixelated* or *LED dots* effect with adjustable LED resolution.
 - **Self-lit:** screens keep the same brightness day and night, like a real LED panel. The LED versions of the billboards have no floodlights.
 - **Saved with your city:** each screen keeps its media, playlist and settings.
 - **Light on performance:** media is shared between screens, off-screen and distant screens aren't drawn, and GIF uploads are spread over several frames.

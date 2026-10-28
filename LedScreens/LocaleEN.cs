@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Colossal;
+using LedScreens.Media;
 using LedScreens.Systems;
 
 namespace LedScreens
@@ -39,6 +40,13 @@ namespace LedScreens
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.DrawDistance)), "Draw distance" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.DrawDistance)), "Screens farther than this from the camera are not drawn." },
 
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.LedEffect)), "LED pixel effect" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.LedEffect)), "Off: smooth image. Pixelated: sharp square pixels at the LED resolution. LED dots: every pixel is a round glowing dot with dark gaps, like a real LED screen up close; it blends into a smooth image from a distance. Media reloads automatically." },
+                { m_Setting.GetEnumValueLocaleID(LedEffectMode.Off), "Off" },
+                { m_Setting.GetEnumValueLocaleID(LedEffectMode.Pixelated), "Pixelated" },
+                { m_Setting.GetEnumValueLocaleID(LedEffectMode.LedDots), "LED dots" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.LedResolution)), "LED resolution" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.LedResolution)), "How many LEDs across the width of the media. Lower = bigger, chunkier pixels." },
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.PoleStyle)), "Pole style" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.PoleStyle)), "Poles of the high-pole screens. Auto: slim steel poles for medium and large screens, a concrete column for huge and bigger ones. Steel: always steel (wide screens get more poles). Concrete: always a concrete column. Restart the game to apply." },
                 { m_Setting.GetEnumValueLocaleID(PoleStyle.Auto), "Auto" },

@@ -21,6 +21,7 @@ namespace LedScreens.Media
 
         private const float kUploadBudgetMs = 4f;
         private const float kUnloadAfterSeconds = 60f;
+        private const float kUnloadVideoAfterSeconds = 300f;
         private const float kUnloadCheckInterval = 5f;
 
         private static readonly string[] kGifExtensions = { ".gif" };
@@ -36,6 +37,7 @@ namespace LedScreens.Media
         private List<string> m_Available = new List<string>();
         private PendingUpload m_Upload;
         private float m_NextUnloadCheck;
+        private int m_LoadSettingsHash;
 
         public static MediaLibrary Instance { get; } = new MediaLibrary();
 
@@ -101,6 +103,15 @@ namespace LedScreens.Media
         {
             m_Stopwatch.Restart();
 
+            // Media is baked with the quality/effect settings, so reload it when they change.
+            int settingsHash = LoadSettingsHash();
+            if (m_LoadSettingsHash != 0 && settingsHash != m_LoadSettingsHash)
+            {
+                Mod.log.Info("Media settings changed, reloading media");
+                Refresh();
+            }
+            m_LoadSettingsHash = settingsHash;
+
             if (m_Upload == null)
                 TakeFinishedDecode();
 
@@ -120,6 +131,12 @@ namespace LedScreens.Media
             if (m_Stopwatch.Elapsed.TotalMilliseconds < kUploadBudgetMs)
                 TakeFinishedImage(now);
 
+            foreach (var media in m_Media.Values)
+            {
+                if (media is VideoMedia video)
+                    video.Update(now);
+            }
+
             if (now >= m_NextUnloadCheck)
             {
                 m_NextUnloadCheck = now + kUnloadCheckInterval;
@@ -134,6 +151,23 @@ namespace LedScreens.Media
             {
                 UnityEngine.Object.Destroy(NoSignal);
                 NoSignal = null;
+            }
+        }
+
+        private static int LoadSettingsHash()
+        {
+            var s = Mod.Settings;
+            if (s == null)
+                return 0;
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + s.MaxTextureSize;
+                hash = hash * 31 + s.MaxFrames;
+                hash = hash * 31 + (s.CompressTextures ? 1 : 0);
+                hash = hash * 31 + (int)s.LedEffect;
+                hash = hash * 31 + s.LedResolution;
+                return hash == 0 ? 1 : hash;
             }
         }
 
@@ -164,10 +198,12 @@ namespace LedScreens.Media
             var setting = Mod.Settings;
             int maxSize = setting?.MaxTextureSize ?? 512;
             int maxFrames = setting?.MaxFrames ?? 300;
+            var effect = setting?.LedEffect ?? LedEffectMode.Off;
+            int columns = setting?.LedResolution ?? 128;
 
             if (name == kTestPattern)
             {
-                m_Decoding[name] = Task.Run(() => TestPattern.Generate());
+                m_Decoding[name] = Task.Run(() => LedEffect.Apply(TestPattern.Generate(), effect, columns));
                 return;
             }
 
@@ -182,13 +218,13 @@ namespace LedScreens.Media
             switch (GetKind(path))
             {
                 case Kind.Gif:
-                    m_Decoding[name] = Task.Run(() => GifDecoder.Decode(File.ReadAllBytes(path), maxSize, maxFrames));
+                    m_Decoding[name] = Task.Run(() => LedEffect.Apply(GifDecoder.Decode(File.ReadAllBytes(path), maxSize, maxFrames), effect, columns));
                     break;
                 case Kind.Image:
                     m_ReadingImages[name] = Task.Run(() => File.ReadAllBytes(path));
                     break;
                 case Kind.Video:
-                    Add(new VideoMedia(name, path, maxSize), now);
+                    Add(new VideoMedia(name, path, maxSize, effect, columns), now);
                     break;
                 default:
                     Mod.log.Warn($"Media '{name}' has an unsupported file type");
@@ -219,7 +255,8 @@ namespace LedScreens.Media
                 }
 
                 bool compress = Mod.Settings?.CompressTextures ?? true;
-                m_Upload = new PendingUpload(pair.Key, pair.Value.Result, compress);
+                var effect = Mod.Settings?.LedEffect ?? LedEffectMode.Off;
+                m_Upload = new PendingUpload(pair.Key, pair.Value.Result, compress, LedEffect.BrightnessCompensation(effect));
                 return;
             }
         }
@@ -237,8 +274,9 @@ namespace LedScreens.Media
                     if (pair.Value.IsFaulted)
                         throw pair.Value.Exception.GetBaseException();
 
-                    var frame = LoadImage(pair.Key, pair.Value.Result, Mod.Settings?.MaxTextureSize ?? 512);
-                    var clip = new MediaClip(pair.Key, new[] { frame }, new[] { 1f });
+                    var effect = Mod.Settings?.LedEffect ?? LedEffectMode.Off;
+                    var frame = LoadImage(pair.Key, pair.Value.Result, Mod.Settings?.MaxTextureSize ?? 512, effect, Mod.Settings?.LedResolution ?? 128);
+                    var clip = new MediaClip(pair.Key, new[] { frame }, new[] { 1f }, LedEffect.BrightnessCompensation(effect));
                     Add(clip, now);
                     Mod.log.Info($"Loaded image '{clip.Name}': {clip.Width}x{clip.Height}");
                 }
@@ -252,7 +290,7 @@ namespace LedScreens.Media
         }
 
         /// <summary>Decodes a PNG/JPG; images over the size limit are scaled down on the GPU.</summary>
-        private static Texture LoadImage(string name, byte[] bytes, int maxSize)
+        private static Texture LoadImage(string name, byte[] bytes, int maxSize, LedEffectMode effect, int columns)
         {
             var texture = new Texture2D(2, 2, TextureFormat.RGBA32, true)
             {
@@ -265,6 +303,23 @@ namespace LedScreens.Media
             {
                 UnityEngine.Object.Destroy(texture);
                 throw new FormatException("Not a valid PNG or JPG file");
+            }
+
+            if (effect != LedEffectMode.Off)
+            {
+                // Bake the LED look on the CPU while the decoded pixels are still readable.
+                var pixels = LedEffect.ApplyFrame(texture.GetPixels32(), texture.width, texture.height, effect, columns, out int width, out int height);
+                UnityEngine.Object.Destroy(texture);
+                var led = new Texture2D(width, height, TextureFormat.RGBA32, true)
+                {
+                    name = $"LedScreens_{name}",
+                    filterMode = effect == LedEffectMode.Pixelated ? FilterMode.Point : FilterMode.Trilinear,
+                    wrapMode = TextureWrapMode.Clamp,
+                    anisoLevel = 4,
+                };
+                led.SetPixels32(pixels);
+                led.Apply(true, true);
+                return led;
             }
 
             int largest = Math.Max(texture.width, texture.height);
@@ -296,8 +351,11 @@ namespace LedScreens.Media
             List<string> expired = null;
             foreach (var pair in m_Media)
             {
-                bool failedVideo = pair.Value is VideoMedia video && video.Failed;
-                if (failedVideo || now - pair.Value.LastUsedTime > kUnloadAfterSeconds)
+                bool isVideo = pair.Value is VideoMedia;
+                bool failedVideo = isVideo && ((VideoMedia)pair.Value).Failed;
+                // Videos take a moment to start again, so keep them around longer (playlists come back to them).
+                float unloadAfter = isVideo ? kUnloadVideoAfterSeconds : kUnloadAfterSeconds;
+                if (failedVideo || now - pair.Value.LastUsedTime > unloadAfter)
                     (expired ??= new List<string>()).Add(pair.Key);
                 if (failedVideo)
                     m_Failed.Add(pair.Key);
@@ -352,14 +410,16 @@ namespace LedScreens.Media
         {
             private readonly DecodedClip m_Decoded;
             private readonly bool m_Compress;
+            private readonly float m_BrightnessScale;
             private readonly Texture[] m_Textures;
             private int m_Next;
 
-            public PendingUpload(string name, DecodedClip decoded, bool compress)
+            public PendingUpload(string name, DecodedClip decoded, bool compress, float brightnessScale)
             {
                 Name = name;
                 m_Decoded = decoded;
                 m_Compress = compress;
+                m_BrightnessScale = brightnessScale;
                 m_Textures = new Texture[decoded.Frames.Count];
             }
 
@@ -371,7 +431,7 @@ namespace LedScreens.Media
                 var texture = new Texture2D(m_Decoded.Width, m_Decoded.Height, TextureFormat.RGBA32, true)
                 {
                     name = $"LedScreens_{Name}_{m_Next}",
-                    filterMode = FilterMode.Trilinear,
+                    filterMode = m_Decoded.PointFilter ? FilterMode.Point : FilterMode.Trilinear,
                     wrapMode = TextureWrapMode.Clamp,
                     anisoLevel = 4,
                 };
@@ -386,7 +446,7 @@ namespace LedScreens.Media
                 return m_Next >= m_Textures.Length;
             }
 
-            public MediaClip CreateClip() => new MediaClip(Name, m_Textures, m_Decoded.Delays.ToArray());
+            public MediaClip CreateClip() => new MediaClip(Name, m_Textures, m_Decoded.Delays.ToArray(), m_BrightnessScale);
 
             public void Abort()
             {

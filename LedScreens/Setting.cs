@@ -78,6 +78,14 @@ namespace LedScreens
         public float DrawDistance { get; set; }
 
         [SettingsUISection(kSection, kDisplayGroup)]
+        public LedEffectMode LedEffect { get; set; }
+
+        [SettingsUISection(kSection, kDisplayGroup)]
+        [SettingsUISlider(min = 32f, max = 320f, step = 16f, unit = Unit.kInteger)]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(IsLedEffectOff))]
+        public int LedResolution { get; set; }
+
+        [SettingsUISection(kSection, kDisplayGroup)]
         public PoleStyle PoleStyle { get; set; }
 
         [SettingsUISection(kSection, kQualityGroup)]
@@ -108,6 +116,8 @@ namespace LedScreens
             Brightness = 1f;
             DrawDistance = 2500f;
             PoleStyle = PoleStyle.Auto;
+            LedEffect = LedEffectMode.Off;
+            LedResolution = 128;
             MaxTextureSize = 512;
             MaxFrames = 300;
             CompressTextures = true;
@@ -115,6 +125,8 @@ namespace LedScreens
             SurfaceOffset = 0f;
             ExtraInset = 0f;
         }
+
+        public bool IsLedEffectOff() => LedEffect == LedEffectMode.Off;
 
         public DropdownItem<string>[] GetMediaItems()
         {

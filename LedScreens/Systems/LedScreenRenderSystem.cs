@@ -170,12 +170,16 @@ namespace LedScreens.Systems
 
                     var screen = screens[i];
                     Texture texture = null;
+                    float mediaBrightness = 1f;
                     if ((screen.m_Flags & LedScreenFlags.Initialized) != 0)
                     {
                         string media = resolver.Resolve(EntityManager, entities[i], screen, time, out string next, out float timeToNext);
                         var clip = library.GetClip(media, now);
                         if (clip != null)
+                        {
                             texture = clip.GetFrame(time * screen.m_Speed + screen.m_TimeOffset);
+                            mediaBrightness = clip.BrightnessScale;
+                        }
                         // Start loading the next playlist item early so the switch has no gap.
                         if (next != null && timeToNext < kPreloadSeconds)
                             library.GetClip(next, now);
@@ -183,7 +187,7 @@ namespace LedScreens.Systems
                     if (texture == null)
                         texture = library.NoSignal;
 
-                    int brightness = (int)math.round(screen.m_Brightness * settings.Brightness * 100f);
+                    int brightness = (int)math.round(screen.m_Brightness * settings.Brightness * mediaBrightness * 100f);
 
                     if ((surface.m_Faces & ScreenFaces.Front) != 0)
                         AddFace(transform, surface.m_FrontCenter, surface.m_FrontRotation, surface.m_Size, cameraPosition, texture, brightness);
