@@ -1,0 +1,5 @@
+bin/
+obj/
+.vs/
+*.user
+LedScreens/ui_src/node_modules/

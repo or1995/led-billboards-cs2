@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Configurations>Debug;Release</Configurations>
+    <RootNamespace>LedScreens</RootNamespace>
+    <AssemblyName>LedScreens</AssemblyName>
+    <Version>0.1.0</Version>
+    <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
+    <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
+  </PropertyGroup>
+
+  <!--Imports must be after PropertyGroup block-->
+  <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.props" />
+  <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.targets" />
+
+  <ItemGroup>
+    <Reference Include="Game"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Core"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Logging"><Private>false</Private></Reference>
+    <Reference Include="Colossal.IO.AssetDatabase"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Localization"><Private>false</Private></Reference>
+    <Reference Include="Colossal.Mathematics"><Private>false</Private></Reference>
+    <Reference Include="Colossal.PSI.Common"><Private>false</Private></Reference>
+    <Reference Include="Colossal.UI"><Private>false</Private></Reference>
+    <Reference Include="Colossal.UI.Binding"><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ImageConversionModule"><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VideoModule"><Private>false</Private></Reference>
+    <Reference Include="Unity.Burst"><Private>false</Private></Reference>
+    <Reference Include="Unity.Collections"><Private>false</Private></Reference>
+    <Reference Include="Unity.Entities"><Private>false</Private></Reference>
+    <Reference Include="Unity.Mathematics"><Private>false</Private></Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime"><Private>false</Private></Reference>
+    <Reference Include="Unity.RenderPipelines.HighDefinition.Runtime"><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Update="System"><Private>false</Private></Reference>
+    <Reference Update="System.Core"><Private>false</Private></Reference>
+    <Reference Update="System.Data"><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(ModPropsFile)" Link="Properties\Mod.props" />
+    <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets" />
+  </ItemGroup>
+
+  <!--The UI module is plain JavaScript (no build step); the game loads .mjs files next to the mod DLL.-->
+  <Target Name="DeployUIModule" AfterTargets="DeployWIP">
+    <Copy SourceFiles="UI\LedScreens.mjs" DestinationFolder="$(DeployDir)" />
+  </Target>
+
+  <!--
+    Fallback for an incomplete Modding Toolchain install (no UnityModsProject / Entities source generators).
+    When the Unity mod project exists, these targets behave exactly like the ones in Mod.targets.
+    When it doesn't, the mod is built and deployed without the post processor (no Burst AOT),
+    which is fine because this mod doesn't use Burst or SystemAPI code generation.
+  -->
+  <PropertyGroup>
+    <HasUnityModProject Condition="Exists('$(UnityModProjectPath)')">true</HasUnityModProject>
+    <HasUnityModProject Condition="!Exists('$(UnityModProjectPath)')">false</HasUnityModProject>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(HasUnityModProject)' != 'true'">
+    <Analyzer Remove="$(EntityPackagePath)\**" />
+  </ItemGroup>
+
+  <Target Name="WarnMissingUnityModProject" BeforeTargets="BeforeBuild" Condition="'$(HasUnityModProject)' != 'true'">
+    <Warning Text="Unity mod project not found at '$(UnityModProjectPath)'. Building without the mod post processor. Reinstall the Modding Toolchain in-game (Options > Modding) to get the full toolchain." />
+  </Target>
+
+  <Target Name="CheckUnityModProjectPath" BeforeTargets="BeforeBuild" Condition="'$(NeedBuild)' AND '$(HasUnityModProject)' == 'true'">
+    <Error Condition="!Exists('$(UnityModProjectFullPath)')" Text="$([System.String]::Format('$(ErrorMessageText)','CSII_UNITYMODPROJECTPATH', '$(UnityModProjectFullPath)'))" />
+  </Target>
+
+  <Target Name="CheckEntityPackagePath" BeforeTargets="BeforeBuild" Condition="'$(NeedBuild)' AND '$(HasUnityModProject)' == 'true'">
+    <ItemGroup>
+      <Generators Include="$(EntityPackagePath)\*.dll" />
+    </ItemGroup>
+    <Error Condition="'@(Generators)'==''" Text="$([System.String]::Format('$(ErrorMessageText)','CSII_ENTITIESVERSION', '$(EntityPackagePath)'))" />
+  </Target>
+
+  <Target Name="RunModPostProcessor" AfterTargets="AfterBuild" BeforeTargets="DeployWIP" DependsOnTargets="ModPostProcessorConfig" Condition="'$(NeedBuild)' AND '$(HasUnityModProject)' == 'true'">
+    <Error Condition="!Exists('$(ModPostProcessorFullPath)')" Text="Post processor not found, please check the path: $(ModPostProcessorFullPath)" />
+    <Message Text="Run post processor: $(ModPostProcessorArgs)" Importance="high" />
+    <Exec Command="$(ModPostProcessorArgs)" LogStandardErrorAsError="true" />
+  </Target>
+</Project>
