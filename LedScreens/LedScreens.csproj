@@ -4,7 +4,7 @@
     <Configurations>Debug;Release</Configurations>
     <RootNamespace>LedScreens</RootNamespace>
     <AssemblyName>LedScreens</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
     <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
   </PropertyGroup>
@@ -44,6 +44,16 @@
     <None Include="$(ModPropsFile)" Link="Properties\Mod.props" />
     <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets" />
   </ItemGroup>
+
+  <!--
+    Same as Mod.targets, but lets the toolchain's ModPublisher (built for .NET 6) run on any newer
+    .NET runtime, so publishing works with only .NET 8 installed.
+  -->
+  <Target Name="RunModPublisher" AfterTargets="Publish" DependsOnTargets="ModPublisherConfig">
+    <Error Condition="!Exists('$(ModPublisherPath)')" Text="Mod publisher not found, please check the path: $(ModPublisherPath)" />
+    <Message Text="Run mod publisher: $(ModPublisherArgs)" Importance="high" />
+    <Exec Command="$(ModPublisherArgs)" EnvironmentVariables="DOTNET_ROLL_FORWARD=Major" LogStandardErrorAsError="true" />
+  </Target>
 
   <!--The UI module is plain JavaScript (no build step); the game loads .mjs files next to the mod DLL.-->
   <Target Name="DeployUIModule" AfterTargets="DeployWIP">

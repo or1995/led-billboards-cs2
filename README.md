@@ -3,6 +3,15 @@
 Placeable **animated LED screens and digital billboards** for Cities: Skylines II.
 Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can show something different. You can also give a screen a playlist that runs in order or shuffled.
 
+![LED screens playing animated GIFs in game](docs/media/demo.gif)
+
+| | |
+|---|---|
+| ![City news on a ribbon screen](LedScreens/Properties/Screenshots/01-city-news-ribbon.jpg) | ![Wall screens with the info panel](LedScreens/Properties/Screenshots/02-wall-screens-info-panel.jpg) |
+| ![High-pole screen](LedScreens/Properties/Screenshots/03-high-pole-skyline-cola.jpg) | ![Weather board](LedScreens/Properties/Screenshots/04-weather-board.jpg) |
+
+> ⚠️ **Experimental: use at your own risk and back up your saves.**
+>
 > Status: work in progress (v0.2). Tested on game version 1.6.2 (PC / Xbox app). Not on Paradox Mods yet.
 > Built with the help of [Claude](https://claude.com/claude-code).
 

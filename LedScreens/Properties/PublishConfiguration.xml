@@ -2,32 +2,67 @@
 	<!--Id must be set in order to update existed mod. it is not required for publishing mod for the first time-->
 	<ModId Value="" />
 	<!--Name of the mod to display to players-->
-	<DisplayName Value="LED Screens" />
+	<DisplayName Value="LED Billboards (WIP)" />
 	<!--Short description of the mod-->
-	<ShortDescription Value="Placeable animated LED screens and ad boards that play your own GIFs." />
+	<ShortDescription Value="[WIP / EXPERIMENTAL] Placeable animated LED screens and billboards that play your own GIFs, images and videos. Back up your saves!" />
 	<!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
 	<LongDescription>
-Adds placeable LED screen props. Every screen can play its own animated GIF.
+## ⚠️ Work in progress: use at your own risk
 
-Put .gif files into `ModsData/LedScreens/Media` (button in the mod settings opens the folder).
+This mod is an early, **experimental** release. Before using it:
+
+- **Back up your save games.** Keep a copy of any city you place LED screens in.
+- **Removing the mod later** will remove its screens from saves that contain them.
+- Updates may still change things, and bugs are possible.
+
+Please report problems on GitHub (link below) with a screenshot and your `Logs/LedScreens.Mod.log`.
+
+---
+
+## What it does
+
+Adds placeable **animated LED screens and digital billboards**. Every screen plays your own media, and each one can show something different.
+
+- **Screens:** wall screens, free-standing and round billboards, and **high-pole screens** up to *Giant* (2×2 panels) and *Ribbon* (3 panels wide)
+- **Media:** animated **GIF**, **PNG/JPG** images and **videos** (MP4, WebM, MOV and more)
+- **Per-screen controls** in the info panel: media, speed, brightness, sync / random start
+- **Playlists:** cycle through several files **in order** or **shuffled**
+- **Optional LED look:** *Pixelated* or *LED dots* effect
+- **Self-lit:** screens keep the same brightness day and night
+
+## How to use
+
+1. **Add your media:** Options → LED Screens → **Open media folder**, then drop in your `.gif`, `.png`, `.jpg` or video files and press **Reload media**.
+2. **Place a screen:** in your city, open **Landscaping → LED Screens** and place one.
+3. **Pick what it shows:** **click the screen**. Its info panel has an **LED Screen** section where you choose the media or set up a playlist.
+
+Tip: for smooth video playback, use MP4 (H.264 baseline). See the full guide on GitHub.
+
+## Open source
+
+Free and open source (MIT). Feel free to edit it, build it and contribute:
+https://github.com/or1995/led-billboards-cs2
 	</LongDescription>
 	<!--Thumbnail-->
 	<Thumbnail Value="Properties/Thumbnail.png" />
 	<!--Screenshot, can be set multiple times-->
-	<Screenshot Value="" />
+	<Screenshot Value="Properties/Screenshots/01-city-news-ribbon.jpg" />
+	<Screenshot Value="Properties/Screenshots/02-wall-screens-info-panel.jpg" />
+	<Screenshot Value="Properties/Screenshots/03-high-pole-skyline-cola.jpg" />
+	<Screenshot Value="Properties/Screenshots/04-weather-board.jpg" />
+	<Screenshot Value="Properties/Screenshots/05-high-pole-colour-wave.jpg" />
 	<!--Tag, can be set multiple times-->
 	<Tag Value="Code Mod" />
-	<!--Link to the forum post where the mod can be discussed-->
-	<ForumLink Value="" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.1.0" />
+	<ModVersion Value="0.2.0" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.6.*" />
-	<!--Dependency for the mod, can be set multiple times-->
-	<Dependency Id="" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
+First public test release (work in progress, experimental). Back up your saves before trying it.
+- LED screens and billboards with per-screen GIF, image and video playback
+- Playlists (in order / shuffle), LED pixel effect, high-pole screens
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdfunding, generic-->
-	<ExternalLink Type="generic" Url="" />
+	<ExternalLink Type="github" Url="https://github.com/or1995/led-billboards-cs2" />
 </Publish>
