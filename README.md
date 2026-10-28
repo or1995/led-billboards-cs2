@@ -69,4 +69,15 @@ docs/
 
 ## Contributing / feedback
 
-Issues and pull requests are welcome. If something looks wrong in game, please attach a screenshot and `Logs\LedScreens.Mod.log` from the game's user data folder.
+Anyone is welcome to use, modify and build on this mod.
+
+- **Bugs and ideas:** open an [issue](https://github.com/or1995/led-billboards-cs2/issues). If something looks wrong in game, attach a screenshot and `Logs\LedScreens.Mod.log` from the game's user data folder.
+- **Code changes:**
+  1. Fork the repository and make your changes on a branch.
+  2. Build and test in game; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+  3. Open a pull request describing what changed and how you tested it.
+- **Your own version:** you can publish a modified version, as long as you keep the licence notice. Please give it a different name and mod ID so players can tell the two apart.
+
+## License
+
+[MIT](LICENSE): free to use, copy, modify and redistribute, including in other mods, as long as the copyright and licence notice are kept. Provided as is, without warranty.
