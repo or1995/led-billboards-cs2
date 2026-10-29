@@ -41,5 +41,8 @@ namespace LedScreens.Components
 
         /// <summary>Meters in front of the panel face, to avoid z-fighting.</summary>
         public float m_SurfaceOffset;
+
+        /// <summary>Round ad face: the image is drawn as a disc, cropped to fill it.</summary>
+        public bool m_Round;
     }
 }

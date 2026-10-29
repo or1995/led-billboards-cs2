@@ -12,15 +12,18 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
 
 > ⚠️ **Experimental: use at your own risk and back up your saves.**
 >
-> Status: work in progress (v0.2). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
+> Status: work in progress (v0.3). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
 > Built with the help of [Claude](https://claude.com/claude-code).
 
 ## Features
 
 - **Placeable LED screen props** in their own **LED Screens** tab under Landscaping:
-  - Wall screens (small → huge)
-  - Free-standing billboards (small → huge) and round billboards
-  - **High-pole screens**, from medium up to *Giant* (2×2 panels, about 25 × 12 m) and *Ribbon* (3 panels wide, about 37 m). Pole thickness matches the screen size.
+  - **About 40 props**, each with its own toolbar icon
+  - Wall screens (small → huge), posters, portrait screens and ticker strips
+  - **Video walls and building facades**, up to about 50 × 20 m
+  - Free-standing billboards, street totems and roadside screens
+  - **High-pole screens**, from medium up to *Mega* (about 42 × 12 m) and *Ribbon* (3 panels wide, about 37 m), plus portrait and **double-sided** versions. Pole thickness matches the screen size.
+  - Round wall screens and double-sided round signs on poles; the image is cropped to the circle
 - **Your own media:** drop files into a folder and pick them per screen.
   - Animated **GIF**, with per-screen speed and timing
   - **PNG / JPG** still images

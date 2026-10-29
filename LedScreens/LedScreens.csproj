@@ -4,7 +4,7 @@
     <Configurations>Debug;Release</Configurations>
     <RootNamespace>LedScreens</RootNamespace>
     <AssemblyName>LedScreens</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
     <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
   </PropertyGroup>
@@ -58,7 +58,12 @@
   <!--The UI module is plain JavaScript (no build step); the game loads .mjs files next to the mod DLL.-->
   <Target Name="DeployUIModule" AfterTargets="DeployWIP">
     <Copy SourceFiles="UI\LedScreens.mjs" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="@(LedScreenIcon)" DestinationFolder="$(DeployDir)\ledscreens-icons" />
   </Target>
+  <ItemGroup>
+    <!--Toolbar icons, served to the UI from coui://ui-mods/ledscreens-icons/ (made by tools/make_icons.py).-->
+    <LedScreenIcon Include="UI\ledscreens-icons\*.png" />
+  </ItemGroup>
 
   <!--
     Fallback for an incomplete Modding Toolchain install (no UnityModsProject / Entities source generators).

@@ -23,7 +23,7 @@ Please report problems on GitHub (link below) with a screenshot and your `Logs/L
 
 Adds placeable **animated LED screens and digital billboards**. Every screen plays your own media, and each one can show something different.
 
-- **Screens:** wall screens, free-standing and round billboards, and **high-pole screens** up to *Giant* (2×2 panels) and *Ribbon* (3 panels wide)
+- **About 40 screens, each with its own icon:** wall screens, posters, ticker strips, **video walls and building facades** (up to about 50 × 20 m), free-standing billboards, street totems, roadside screens, **high-pole screens** (up to *Mega* and *Ribbon*, plus portrait and **double-sided** versions) and round signs
 - **Media:** animated **GIF**, **PNG/JPG** images and **videos** (MP4, WebM, MOV and more)
 - **Per-screen controls** in the info panel: media, speed, brightness, sync / random start
 - **Playlists:** cycle through several files **in order** or **shuffled**
@@ -54,14 +54,17 @@ https://github.com/or1995/led-billboards-cs2
 	<!--Tag, can be set multiple times-->
 	<Tag Value="Code Mod" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.2.0" />
+	<ModVersion Value="0.3.0" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.6.*" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-First public test release (work in progress, experimental). Back up your saves before trying it.
-- LED screens and billboards with per-screen GIF, image and video playback
-- Playlists (in order / shuffle), LED pixel effect, high-pole screens
+0.3.0 (work in progress, experimental: back up your saves)
+- 22 new screens: video walls, building facades, ticker strips, posters, portrait screens, street totems, roadside screens, portrait / Mega / double-sided high-pole screens and double-sided round signs on poles
+- Every screen has its own toolbar icon
+- Round billboards: the image is now a circle cropped to fit, instead of a square spilling past the rim
+- High-Pole Giant no longer has a walkway across the middle of the screen
+- Existing screens in your saves are kept
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdfunding, generic-->
 	<ExternalLink Type="github" Url="https://github.com/or1995/led-billboards-cs2" />

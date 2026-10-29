@@ -34,8 +34,11 @@ Only shader variants the game itself uses ship in the build. The emissive-map an
 2. **`LedScreenPrefabSystem.OnGamePreload`:** runs once, after the vanilla prefabs have loaded (mods load before them). It:
    - clones the vanilla billboards and strips components that would break them (placeholder, spawnable, brand, theme, light effects);
    - measures each ad panel (`AdPanelMeasurer` reads the `*_Ads` submesh) so the screen fits exactly;
-   - for high-pole screens, builds a grid of panels and adds a vanilla pole mesh (`FlagPole*` or `IndustrialChimney*`), picking the pole by its measured trunk diameter and sinking extra height into the ground;
+   - for templates with a `Layout`, builds a grid of panels: wall grids stay wall-mounted; pole layouts add a vanilla pole mesh (`FlagPole*` or `IndustrialChimney*`), picking the pole by its measured trunk diameter and sinking extra height into the ground. Double-sided layouts add a copy of the grid turned 180° around the pole;
+   - sets each prop's toolbar icon to `coui://ui-mods/ledscreens-icons/<PrefabName>.png`. The icons are made by `tools/make_icons.py` (Pillow) into `LedScreens/UI/ledscreens-icons/`, and the build copies them next to the mod. Add a line there when you add a template;
    - adds the LED Screens category to the Landscaping menu.
+
+   Saves store placed screens by prefab name. Never rename or remove a template, and don't change the source or layout of one that has shipped: add a new template instead.
 3. **`LedScreenPrefab`** (a `ComponentBase`) adds `LedScreenData` to the prefab entity and `LedScreen` to every placed instance.
 4. **`LedScreenInitSystem`:** gives new screens their default media and copies settings to move previews. It also removes the `Placeholder` tag from screens placed with old versions.
 

@@ -74,7 +74,7 @@ namespace LedScreens
             foreach (var template in LedScreenPrefabSystem.Templates)
             {
                 entries[$"Assets.NAME[{template.Name}]"] = template.DisplayName;
-                entries[$"Assets.DESCRIPTION[{template.Name}]"] = "An LED screen that plays an animated GIF. Put GIFs in the media folder (see mod settings).";
+                entries[$"Assets.DESCRIPTION[{template.Name}]"] = "An LED screen that plays your own GIFs, images and videos. Put them in the media folder (see mod settings), then click the screen to choose.";
             }
             entries[$"SubServices.NAME[{LedScreenPrefabSystem.kCategoryName}]"] = "LED Screens";
             entries[$"Assets.SUB_SERVICE_DESCRIPTION[{LedScreenPrefabSystem.kCategoryName}]"] = "Animated LED screens and ad boards.";

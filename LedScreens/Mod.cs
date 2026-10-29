@@ -14,12 +14,18 @@ namespace LedScreens
 
         public static Setting Settings { get; private set; }
 
+        /// <summary>Folder the mod was loaded from (null if unknown).</summary>
+        public static string Directory { get; private set; }
+
         public void OnLoad(UpdateSystem updateSystem)
         {
             log.Info(nameof(OnLoad));
 
             if (GameManager.instance.modManager.TryGetExecutableAsset(this, out var asset))
+            {
                 log.Info($"Current mod asset at {asset.path}");
+                Directory = System.IO.Path.GetDirectoryName(asset.path);
+            }
 
             MediaLibrary.Instance.Initialize();
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Colossal.Mathematics;
 using Game;
@@ -22,10 +23,13 @@ namespace LedScreens.Systems
     {
         public const string kCategoryName = "LedScreens";
 
+        // Unique folder name: the UI files of all mods share the "ui-mods" host.
+        private const string kIconFolder = "ledscreens-icons";
+
         public sealed class ScreenTemplate
         {
             public ScreenTemplate(string source, string name, string displayName, ScreenFaces faces, float insetSide, float insetTop, float insetBottom,
-                PoleMount pole = null, string[] legacyNames = null)
+                Layout layout = null, string[] legacyNames = null)
             {
                 Source = source;
                 Name = name;
@@ -34,7 +38,7 @@ namespace LedScreens.Systems
                 InsetSide = insetSide;
                 InsetTop = insetTop;
                 InsetBottom = insetBottom;
-                Pole = pole;
+                Layout = layout;
                 LegacyNames = legacyNames ?? Array.Empty<string>();
             }
 
@@ -46,37 +50,56 @@ namespace LedScreens.Systems
             public float InsetTop { get; }
             public float InsetBottom { get; }
 
-            /// <summary>When set, the panel (or a grid of panels) is raised onto poles.</summary>
-            public PoleMount Pole { get; }
+            /// <summary>When set, the panel is repeated as a grid and/or raised onto poles.</summary>
+            public Layout Layout { get; }
+
+            /// <summary>Round ad face (the round billboards).</summary>
+            public bool Round => Source.StartsWith("BillboardRound", StringComparison.Ordinal);
 
             /// <summary>Earlier names of this prefab; saves that use them load as this prefab.</summary>
             public string[] LegacyNames { get; }
         }
 
         /// <summary>
-        /// A screen raised on poles: a grid of copies of the source panel with one continuous
-        /// image across all of them, and poles whose thickness suits the size of the screen.
+        /// A grid of copies of the source panel with one continuous image across all of them.
+        /// Either it stays on the wall like the source, or it stands on poles whose thickness
+        /// suits the size of the screen, optionally with a second grid back to back.
         /// </summary>
-        public sealed class PoleMount
+        public sealed class Layout
         {
-            public PoleMount(int columns, int rows, int poles, float poleDiameter, float elevation)
+            private Layout(int columns, int rows, int poles, float poleDiameter, float elevation, bool doubleSided)
             {
                 Columns = columns;
                 Rows = rows;
                 Poles = poles;
                 PoleDiameter = poleDiameter;
                 Elevation = elevation;
+                DoubleSided = doubleSided;
             }
+
+            /// <summary>A grid that mounts on walls like the source panel.</summary>
+            public static Layout Wall(int columns, int rows) => new Layout(columns, rows, 0, 0f, 0f, false);
+
+            /// <summary>A grid standing on poles, its bottom at the given height.</summary>
+            public static Layout OnPoles(int columns, int rows, int poles, float poleDiameter, float elevation, bool doubleSided = false) =>
+                new Layout(columns, rows, poles, poleDiameter, elevation, doubleSided);
 
             public int Columns { get; }
             public int Rows { get; }
+
+            /// <summary>Number of poles; 0 for a wall-mounted grid.</summary>
             public int Poles { get; }
+
+            public bool HasPoles => Poles > 0;
 
             /// <summary>Wanted pole thickness in meters; the closest vanilla pole is used.</summary>
             public float PoleDiameter { get; }
 
             /// <summary>Height of the bottom of the panels above the ground, in meters.</summary>
             public float Elevation { get; }
+
+            /// <summary>A second grid faces the other way, with the poles between them.</summary>
+            public bool DoubleSided { get; }
         }
 
         // The screen normally sits on the measured ad panel. Faces and insets are only used
@@ -87,25 +110,49 @@ namespace LedScreens.Systems
         // ad face (light effects + glowing lamp heads in the mesh). A screen lights itself, so the
         // LED versions use the matching 02 models, which have no lights. The vanilla billboards
         // themselves are untouched. Screens placed with the old floodlit versions load as the new ones.
+        //
+        // Placed screens are saved by prefab name: never rename or remove a template without
+        // listing the old name in legacyNames. Changing a source or layout is save-safe but
+        // changes how placed screens look.
+        //
+        // Grids with more than one row are built from Large panels: the Huge panel has a walkway
+        // along its bottom edge (part of the same mesh), which would cross the screen when stacked.
+        // A Large panel is exactly 2/3 of a Huge one.
+        // The order here is the order in the toolbar.
         public static readonly ScreenTemplate[] Templates =
         {
+            // Wall screens
             new ScreenTemplate("BillboardWallSmall01", "LedScreenWallSmall01", "LED Wall Screen (Small)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f),
             new ScreenTemplate("BillboardWallMedium01", "LedScreenWallMedium01", "LED Wall Screen (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f),
             new ScreenTemplate("BillboardWallLarge01", "LedScreenWallLarge01", "LED Wall Screen (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f),
             new ScreenTemplate("BillboardWallHuge02", "LedScreenWallHuge02", "LED Wall Screen (Huge)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 legacyNames: new[] { "LedScreenWallHuge01" }),
-            new ScreenTemplate("BillboardWallMedium01", "LedScreenHighPoleMedium01", "LED High-Pole Screen (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                new PoleMount(columns: 1, rows: 1, poles: 1, poleDiameter: 0.35f, elevation: 6f)),
-            new ScreenTemplate("BillboardWallLarge01", "LedScreenHighPoleLarge01", "LED High-Pole Screen (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                new PoleMount(columns: 1, rows: 1, poles: 2, poleDiameter: 0.4f, elevation: 7f)),
-            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleHuge01", "LED High-Pole Screen (Huge)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                new PoleMount(columns: 1, rows: 1, poles: 1, poleDiameter: 1.4f, elevation: 9f)),
-            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleWide01", "LED High-Pole Screen (Extra Wide)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                new PoleMount(columns: 2, rows: 1, poles: 2, poleDiameter: 1.6f, elevation: 10f)),
-            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleGiant01", "LED High-Pole Screen (Giant)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                new PoleMount(columns: 2, rows: 2, poles: 2, poleDiameter: 2.2f, elevation: 10f)),
-            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleRibbon01", "LED High-Pole Screen (Ribbon)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                new PoleMount(columns: 3, rows: 1, poles: 3, poleDiameter: 1.6f, elevation: 10f)),
+            new ScreenTemplate("BillboardWallSmall01", "LedPosterWallSmall2x2", "LED Poster Screen (Wall)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(2, 2)),
+            new ScreenTemplate("BillboardWallMedium01", "LedPortraitWallMedium1x3", "LED Portrait Wall Screen", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(1, 3)),
+            new ScreenTemplate("BillboardWallMedium01", "LedTickerWallMedium3x1", "LED Ticker Strip (Short)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(3, 1)),
+            new ScreenTemplate("BillboardWallMedium01", "LedTickerWallMedium6x1", "LED Ticker Strip (Long)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(6, 1)),
+
+            // Video walls and building facades
+            new ScreenTemplate("BillboardWallLarge01", "LedVideoWallLarge2x1", "LED Video Wall (2×1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(2, 1)),
+            new ScreenTemplate("BillboardWallLarge01", "LedVideoWallLarge2x2", "LED Video Wall (2×2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(2, 2)),
+            new ScreenTemplate("BillboardWallLarge01", "LedVideoWallLarge3x2", "LED Video Wall (3×2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(3, 2)),
+            new ScreenTemplate("BillboardWallLarge01", "LedFacadeLarge3x3", "LED Facade Screen (3×3)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(3, 3), legacyNames: new[] { "LedFacadeHuge2x2" }),
+            new ScreenTemplate("BillboardWallLarge01", "LedFacadeLarge5x3", "LED Facade Screen (5×3)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(5, 3), legacyNames: new[] { "LedFacadeHuge3x2" }),
+            new ScreenTemplate("BillboardWallLarge01", "LedFacadeLarge6x5", "LED Facade Screen (6×5)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(6, 5), legacyNames: new[] { "LedFacadeHuge4x3" }),
+            new ScreenTemplate("BillboardWallLarge01", "LedFacadeLarge2x6", "LED Facade Tower (Portrait)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(2, 6), legacyNames: new[] { "LedFacadeHuge1x3" }),
+
+            // Free-standing billboards
             new ScreenTemplate("BillboardSmall01", "LedScreenSmall01", "LED Billboard (Small)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
             new ScreenTemplate("BillboardSmall02", "LedScreenSmall02", "LED Billboard (Small 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
             new ScreenTemplate("BillboardMedium02", "LedScreenMedium02", "LED Billboard (Medium)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f,
@@ -114,9 +161,47 @@ namespace LedScreens.Systems
                 legacyNames: new[] { "LedScreenLarge01" }),
             new ScreenTemplate("BillboardHuge02", "LedScreenHuge02", "LED Billboard (Huge)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f,
                 legacyNames: new[] { "LedScreenHuge01" }),
+            new ScreenTemplate("BillboardWallSmall01", "LedTotemSmall2x3", "LED Street Totem", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 2, rows: 3, poles: 1, poleDiameter: 0.2f, elevation: 0.4f)),
+            new ScreenTemplate("BillboardWallSmall01", "LedTotemSmall2x3Double", "LED Street Totem (Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 2, rows: 3, poles: 1, poleDiameter: 0.2f, elevation: 0.4f, doubleSided: true)),
+            new ScreenTemplate("BillboardWallLarge01", "LedRoadsideLarge01", "LED Roadside Screen (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.3f, elevation: 2.5f)),
+            new ScreenTemplate("BillboardWallHuge02", "LedRoadsideHuge01", "LED Roadside Screen (Huge)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 3, poleDiameter: 0.4f, elevation: 3f)),
+
+            // High-pole screens
+            new ScreenTemplate("BillboardWallMedium01", "LedScreenHighPoleMedium01", "LED High-Pole Screen (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.35f, elevation: 6f)),
+            new ScreenTemplate("BillboardWallLarge01", "LedScreenHighPoleLarge01", "LED High-Pole Screen (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.4f, elevation: 7f)),
+            new ScreenTemplate("BillboardWallLarge01", "LedHighPoleLargeDouble", "LED High-Pole Screen (Large, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.4f, elevation: 7f, doubleSided: true)),
+            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleHuge01", "LED High-Pole Screen (Huge)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 1.4f, elevation: 9f)),
+            new ScreenTemplate("BillboardWallHuge02", "LedHighPoleHugeDouble", "LED High-Pole Screen (Huge, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 1.4f, elevation: 9f, doubleSided: true)),
+            new ScreenTemplate("BillboardWallLarge01", "LedHighPolePortrait1x3", "LED High-Pole Screen (Portrait)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 3, poles: 1, poleDiameter: 1.8f, elevation: 8f), legacyNames: new[] { "LedHighPolePortrait1x2" }),
+            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleWide01", "LED High-Pole Screen (Extra Wide)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 2, rows: 1, poles: 2, poleDiameter: 1.6f, elevation: 10f)),
+            new ScreenTemplate("BillboardWallHuge02", "LedHighPoleWideDouble", "LED High-Pole Screen (Extra Wide, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 2, rows: 1, poles: 2, poleDiameter: 1.6f, elevation: 10f, doubleSided: true)),
+            new ScreenTemplate("BillboardWallLarge01", "LedScreenHighPoleGiant01", "LED High-Pole Screen (Giant)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 3, rows: 3, poles: 2, poleDiameter: 2.2f, elevation: 10f)),
+            new ScreenTemplate("BillboardWallLarge01", "LedHighPoleMega5x3", "LED High-Pole Screen (Mega)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 5, rows: 3, poles: 3, poleDiameter: 2.4f, elevation: 12f), legacyNames: new[] { "LedHighPoleMega3x2" }),
+            new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleRibbon01", "LED High-Pole Screen (Ribbon)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 3, rows: 1, poles: 3, poleDiameter: 1.6f, elevation: 10f)),
+
+            // Round signs
             new ScreenTemplate("BillboardRoundSmall01", "LedScreenRoundSmall01", "LED Round Billboard (Small)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
             new ScreenTemplate("BillboardRoundMedium01", "LedScreenRoundMedium01", "LED Round Billboard (Medium)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
             new ScreenTemplate("BillboardRoundLarge01", "LedScreenRoundLarge01", "LED Round Billboard (Large)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
+            new ScreenTemplate("BillboardRoundMedium01", "LedRoundPoleMedium01", "LED Round Sign on Pole (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.2f, elevation: 2.6f, doubleSided: true)),
+            new ScreenTemplate("BillboardRoundLarge01", "LedRoundPoleLarge01", "LED Round Sign on Pole (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.25f, elevation: 3.2f, doubleSided: true)),
         };
 
         // Clones must not inherit these: they would make the game spawn our screens on
@@ -205,7 +290,10 @@ namespace LedScreens.Systems
                 if (category != null)
                     ui.m_Group = category;
                 ui.m_Priority = (i + 1) * 10;
-                // Empty icon = the game renders a thumbnail of the mesh.
+                // Without an icon the toolbar shows a generic placeholder (clones have no baked thumbnail).
+                string icon = IconUrl(template.Name);
+                if (icon != null)
+                    ui.m_Icon = icon;
 
                 clone.AddOrGetComponent<PlaceableObject>();
 
@@ -214,15 +302,17 @@ namespace LedScreens.Systems
                 screen.m_InsetSide = template.InsetSide;
                 screen.m_InsetTop = template.InsetTop;
                 screen.m_InsetBottom = template.InsetBottom;
+                screen.m_Round = template.Round;
 
                 Mod.log.Info(AdPanelMeasurer.Describe(source));
                 bool measured = AdPanelMeasurer.TryMeasure(source, out var panel);
-                if (template.Pole != null)
+                if (template.Layout != null)
                 {
-                    poles ??= CollectPoleCandidates(prefabsByName);
-                    if (!measured || !(clone is ObjectGeometryPrefab cloneGeometry) || !TryMountOnPoles(cloneGeometry, template, poles, ref panel))
+                    if (template.Layout.HasPoles)
+                        poles ??= CollectPoleCandidates(prefabsByName);
+                    if (!measured || !(clone is ObjectGeometryPrefab cloneGeometry) || !TryArrange(cloneGeometry, template, poles, ref panel))
                     {
-                        Mod.log.Warn($"Skipping '{template.Name}': couldn't build the pole version");
+                        Mod.log.Warn($"Skipping '{template.Name}': couldn't build its layout");
                         continue;
                     }
                 }
@@ -381,7 +471,7 @@ namespace LedScreens.Systems
             }
         }
 
-        private static PoleKind ChoosePoleKind(PoleMount mount)
+        private static PoleKind ChoosePoleKind(Layout mount)
         {
             switch (Mod.Settings?.PoleStyle ?? PoleStyle.Auto)
             {
@@ -392,13 +482,14 @@ namespace LedScreens.Systems
         }
 
         /// <summary>
-        /// Arranges the panel as a grid raised to the template's elevation, puts poles of a fitting
-        /// thickness right against its back (spread across the width), and widens the screen to
-        /// span the grid.
+        /// Arranges the panel as a grid. Wall grids stay centred on the source panel; pole grids are
+        /// raised to the layout's elevation, with poles of a fitting thickness right against their
+        /// back (spread across the width), or between the two grids of a double-sided screen.
+        /// The screen is widened to span the grid.
         /// </summary>
-        private static bool TryMountOnPoles(ObjectGeometryPrefab clone, ScreenTemplate template, List<PoleCandidate> candidates, ref AdPanelMeasurer.Panel panel)
+        private static bool TryArrange(ObjectGeometryPrefab clone, ScreenTemplate template, List<PoleCandidate> candidates, ref AdPanelMeasurer.Panel panel)
         {
-            var mount = template.Pole;
+            var layout = template.Layout;
             if (clone.m_Meshes == null || clone.m_Meshes.Length == 0)
                 return false;
 
@@ -414,25 +505,35 @@ namespace LedScreens.Systems
             float3 extent = panelBounds.max - panelBounds.min;
             float tileWidth = math.abs(extent.x * right.x) + math.abs(extent.z * right.z);
             float tileHeight = extent.y;
-            float gridWidth = tileWidth * mount.Columns;
-            float gridHeight = tileHeight * mount.Rows;
-            float lift = mount.Elevation - panelBounds.min.y;
+            float gridWidth = tileWidth * layout.Columns;
+            float gridHeight = tileHeight * layout.Rows;
 
-            // Pole top hidden behind the grid, a bit above its middle.
-            float poleTop = mount.Elevation + gridHeight * 0.6f;
-            PoleKind kind = ChoosePoleKind(mount);
-            PoleCandidate pole = PickPole(candidates, kind, mount.PoleDiameter, poleTop, tileWidth)
-                ?? PickPole(candidates, kind == PoleKind.Steel ? PoleKind.Concrete : PoleKind.Steel, mount.PoleDiameter, poleTop, tileWidth);
-            if (pole == null)
+            // Wall grids grow evenly around the source panel; pole grids start at the elevation.
+            float lift = layout.HasPoles
+                ? layout.Elevation - panelBounds.min.y
+                : -(layout.Rows - 1) * tileHeight * 0.5f;
+
+            PoleCandidate pole = null;
+            int poleCount = 0;
+            float poleTop = 0f;
+            if (layout.HasPoles)
             {
-                Mod.log.Warn($"No vanilla pole is tall enough ({poleTop:0.0} m) for '{template.Name}'");
-                return false;
-            }
+                // Pole top hidden behind the grid, a bit above its middle.
+                poleTop = layout.Elevation + gridHeight * 0.6f;
+                PoleKind kind = ChoosePoleKind(layout);
+                pole = PickPole(candidates, kind, layout.PoleDiameter, poleTop, tileWidth)
+                    ?? PickPole(candidates, kind == PoleKind.Steel ? PoleKind.Concrete : PoleKind.Steel, layout.PoleDiameter, poleTop, tileWidth);
+                if (pole == null)
+                {
+                    Mod.log.Warn($"No vanilla pole is tall enough ({poleTop:0.0} m) for '{template.Name}'");
+                    return false;
+                }
 
-            // Slim steel poles can't carry a wide screen alone; add more across the width.
-            int poleCount = mount.Poles;
-            if (pole.Kind == PoleKind.Steel)
-                poleCount = Math.Max(poleCount, (int)math.ceil(gridWidth / kSteelPoleSpacing));
+                // Slim steel poles can't carry a wide screen alone; add more across the width.
+                poleCount = layout.Poles;
+                if (pole.Kind == PoleKind.Steel)
+                    poleCount = Math.Max(poleCount, (int)math.ceil(gridWidth / kSteelPoleSpacing));
+            }
 
             // Back of the panel: the bounds corner furthest against the screen normal.
             float back = float.MaxValue;
@@ -442,52 +543,79 @@ namespace LedScreens.Systems
                 back = math.min(back, math.dot(corner, normal));
             }
 
+            // Trunk touching the back of the panel (slightly overlapping, so no gap shows). A
+            // double-sided screen is the grid plus a copy turned around the trunk's middle.
+            float trunkRadius = pole != null ? pole.Diameter * 0.5f : 0f;
+            float behind = back - trunkRadius * 0.8f;
+            float across = math.dot(panel.m_Center, right);
+            float3 pivot = right * across + normal * behind;
+            quaternion turn = quaternion.RotateY(math.PI);
+
             var meshes = new List<ObjectMeshInfo>();
-            for (int row = 0; row < mount.Rows; row++)
+            for (int side = 0; side < (layout.DoubleSided ? 2 : 1); side++)
             {
-                for (int column = 0; column < mount.Columns; column++)
+                for (int row = 0; row < layout.Rows; row++)
                 {
-                    float3 offset = right * ((column - (mount.Columns - 1) * 0.5f) * tileWidth) + up * (lift + row * tileHeight);
-                    foreach (var info in clone.m_Meshes)
+                    for (int column = 0; column < layout.Columns; column++)
                     {
-                        meshes.Add(new ObjectMeshInfo
+                        float3 offset = right * ((column - (layout.Columns - 1) * 0.5f) * tileWidth) + up * (lift + row * tileHeight);
+                        foreach (var info in clone.m_Meshes)
                         {
-                            m_Mesh = info.m_Mesh,
-                            m_Position = info.m_Position + offset,
-                            m_Rotation = info.m_Rotation,
-                            m_RequireState = info.m_RequireState,
-                        });
+                            float3 position = info.m_Position + offset;
+                            quaternion rotation = info.m_Rotation;
+                            if (side == 1)
+                            {
+                                position = pivot + math.mul(turn, position - pivot);
+                                rotation = math.mul(turn, rotation);
+                            }
+                            meshes.Add(new ObjectMeshInfo
+                            {
+                                m_Mesh = info.m_Mesh,
+                                m_Position = position,
+                                m_Rotation = rotation,
+                                m_RequireState = info.m_RequireState,
+                            });
+                        }
                     }
                 }
             }
 
-            // Trunk touching the back of the panel (slightly overlapping, so no gap shows).
-            float trunkRadius = pole.Diameter * 0.5f;
-            float behind = back - trunkRadius * 0.8f;
-            float sink = pole.Height - poleTop; // extra height goes into the ground
-            float across = math.dot(panel.m_Center, right);
-            for (int k = 0; k < poleCount; k++)
+            if (pole != null)
             {
-                float spread = poleCount == 1 ? 0f : (k / (poleCount - 1f) - 0.5f) * gridWidth * 0.7f;
-                float3 target = right * (across + spread) + normal * behind;
-                meshes.Add(new ObjectMeshInfo
+                float sink = pole.Height - poleTop; // extra height goes into the ground
+                for (int k = 0; k < poleCount; k++)
                 {
-                    m_Mesh = pole.Mesh.m_Mesh,
-                    m_Position = pole.Mesh.m_Position + new float3(target.x - pole.TrunkCenter.x, -sink, target.z - pole.TrunkCenter.z),
-                    m_Rotation = pole.Mesh.m_Rotation,
-                    m_RequireState = pole.Mesh.m_RequireState,
-                });
+                    float spread = poleCount == 1 ? 0f : (k / (poleCount - 1f) - 0.5f) * gridWidth * 0.7f;
+                    float3 target = pivot + right * spread;
+                    meshes.Add(new ObjectMeshInfo
+                    {
+                        m_Mesh = pole.Mesh.m_Mesh,
+                        m_Position = pole.Mesh.m_Position + new float3(target.x - pole.TrunkCenter.x, -sink, target.z - pole.TrunkCenter.z),
+                        m_Rotation = pole.Mesh.m_Rotation,
+                        m_RequireState = pole.Mesh.m_RequireState,
+                    });
+                }
+                // Stand on the ground instead of snapping to walls.
+                clone.Remove(typeof(AttachedObject));
+                Mod.log.Info($"{template.Name}: {layout.Columns}x{layout.Rows} panel(s){(layout.DoubleSided ? " x2 back to back" : "")} at {layout.Elevation:0.0} m on {poleCount} x '{pole.Name}' ({pole.Kind}, trunk {pole.Diameter:0.00} m, wanted {layout.PoleDiameter:0.00}, sunk {sink:0.0} m)");
             }
-
+            else
+            {
+                Mod.log.Info($"{template.Name}: {layout.Columns}x{layout.Rows} wall panels");
+            }
             clone.m_Meshes = meshes.ToArray();
-            // Stand on the ground instead of snapping to walls.
-            clone.Remove(typeof(AttachedObject));
 
             // One continuous screen over the whole grid (it also covers the frames between tiles).
-            panel.m_Center += up * (lift + (mount.Rows - 1) * tileHeight * 0.5f);
-            panel.m_Size += new float2((mount.Columns - 1) * tileWidth, (mount.Rows - 1) * tileHeight);
-
-            Mod.log.Info($"{template.Name}: {mount.Columns}x{mount.Rows} panel(s) at {mount.Elevation:0.0} m on {poleCount} x '{pole.Name}' ({pole.Kind}, trunk {pole.Diameter:0.00} m, wanted {mount.PoleDiameter:0.00}, sunk {sink:0.0} m)");
+            panel.m_Center += up * (lift + (layout.Rows - 1) * tileHeight * 0.5f);
+            panel.m_Size += new float2((layout.Columns - 1) * tileWidth, (layout.Rows - 1) * tileHeight);
+            if (layout.DoubleSided)
+            {
+                // Centre on the turning plane; the two faces then sit at +/- the half depth.
+                float front = math.dot(panel.m_Center, normal) + panel.m_HalfDepth;
+                panel.m_Center += normal * (behind - math.dot(panel.m_Center, normal));
+                panel.m_HalfDepth = front - behind;
+                panel.m_Faces = ScreenFaces.Both;
+            }
             return true;
         }
 
@@ -543,6 +671,17 @@ namespace LedScreens.Systems
             return result;
         }
 
+        /// <summary>
+        /// Icons ship next to the mod's UI module, which the game serves from "coui://ui-mods/".
+        /// Returns null if there's no icon with this name.
+        /// </summary>
+        private static string IconUrl(string name)
+        {
+            if (string.IsNullOrEmpty(Mod.Directory) || !File.Exists(Path.Combine(Mod.Directory, kIconFolder, name + ".png")))
+                return null;
+            return $"coui://ui-mods/{kIconFolder}/{name}.png";
+        }
+
         private Dictionary<string, PrefabBase> CollectPrefabsByName()
         {
             var result = new Dictionary<string, PrefabBase>();
@@ -593,9 +732,10 @@ namespace LedScreens.Systems
             category.name = kCategoryName;
             category.m_Menu = menu;
             var ui = category.AddComponent<UIObject>();
-            ui.m_Icon = sourceUi != null && !string.IsNullOrEmpty(sourceUi.m_Icon)
-                ? sourceUi.m_Icon
-                : $"{iconSource.thumbnailUrl}?width=128&height=128";
+            ui.m_Icon = IconUrl(kCategoryName)
+                ?? (sourceUi != null && !string.IsNullOrEmpty(sourceUi.m_Icon)
+                    ? sourceUi.m_Icon
+                    : $"{iconSource.thumbnailUrl}?width=128&height=128");
             ui.m_Priority = 1000;
 
             if (!m_PrefabSystem.AddPrefab(category))

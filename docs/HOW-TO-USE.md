@@ -17,7 +17,7 @@
 The built-in **Test pattern** is always available, even with an empty folder.
 
 **Tips**
-- Match the screen's shape. Most screens are about **2:1** (wide); round billboards are **1:1**. Media is stretched to fill the screen.
+- Match the screen's shape. Most screens are about **2:1** (wide); portrait screens, totems and posters are taller than wide. Media is stretched to fill rectangular screens. On round screens the middle of the image is cropped to a circle, so it isn't squashed.
 - Keep GIFs reasonable. 512 px wide and a few hundred frames is plenty. Bigger files use more video memory.
 - **Scale down by default:** files larger than *Max GIF resolution* (default 512 px) are scaled down.
 
@@ -28,10 +28,20 @@ Open **Landscaping → LED Screens** and pick a prop:
 | Prop | Description |
 |---|---|
 | LED Wall Screen (Small / Medium / Large / Huge) | Flat panels for building walls or the ground |
+| LED Poster Screen (Wall), LED Portrait Wall Screen | Tall wall screens |
+| LED Ticker Strip (Short / Long) | Long, thin strips for news tickers and shop fronts |
+| LED Video Wall (2×1 / 2×2 / 3×2) | Big wall screens made of several large panels |
+| LED Facade Screen (3×3 / 5×3 / 6×5), LED Facade Tower (Portrait) | Building-sized screens, up to about 50 × 20 m |
 | LED Billboard (Small / Small 2 / Medium / Large / Huge) | Free-standing billboards on legs |
-| LED Round Billboard (Small / Medium / Large) | Round screens |
+| LED Street Totem (single or double-sided) | A tall street-level screen on a short pole |
+| LED Roadside Screen (Large / Huge) | Low screens on poles, for roadsides and car parks |
 | LED High-Pole Screen (Medium / Large / Huge) | A single panel raised on pole(s) |
-| LED High-Pole Screen (Extra Wide / Giant / Ribbon) | 2×1, 2×2 and 3×1 panels showing one big image |
+| LED High-Pole Screen (Extra Wide / Giant / Mega / Ribbon / Portrait) | Several panels showing one big image, up to about 42 × 12 m |
+| LED High-Pole Screen (…, Double-Sided) | Two screens back to back, showing the same media on both sides |
+| LED Round Billboard (Small / Medium / Large) | Round wall screens |
+| LED Round Sign on Pole (Medium / Large) | Double-sided round signs on a pole |
+
+Each prop has its own icon in the toolbar showing its shape.
 
 New screens play whatever is set as **Media** in *Options → LED Screens*, or the media you last marked with **Use for new screens**.
 

@@ -37,12 +37,17 @@ namespace LedScreens.Systems
 
         private static readonly int kUnlitColorMap = Shader.PropertyToID("_UnlitColorMap");
         private static readonly int kUnlitColor = Shader.PropertyToID("_UnlitColor");
+        private static readonly int kUnlitColorMapST = Shader.PropertyToID("_UnlitColorMap_ST");
+
+        // Round screens are drawn slightly inside the measured face so no corner of the image shows past its rim.
+        private const float kRoundInset = 0.98f;
 
         /// <summary>Screen placement in prefab-local space, derived from the mesh bounds.</summary>
         private struct ScreenSurface
         {
             public bool m_Valid;
             public ScreenFaces m_Faces;
+            public bool m_Round;
             public float2 m_Size;
             public float3 m_FrontCenter;
             public float3 m_BackCenter;
@@ -54,18 +59,20 @@ namespace LedScreens.Systems
         {
             public readonly Texture Texture;
             public readonly int Brightness; // hundredths, so nearly-equal values share a batch
+            public readonly bool Round;
 
-            public BatchKey(Texture texture, int brightness)
+            public BatchKey(Texture texture, int brightness, bool round)
             {
                 Texture = texture;
                 Brightness = brightness;
+                Round = round;
             }
 
-            public bool Equals(BatchKey other) => ReferenceEquals(Texture, other.Texture) && Brightness == other.Brightness;
+            public bool Equals(BatchKey other) => ReferenceEquals(Texture, other.Texture) && Brightness == other.Brightness && Round == other.Round;
 
             public override bool Equals(object obj) => obj is BatchKey other && Equals(other);
 
-            public override int GetHashCode() => (Texture != null ? Texture.GetHashCode() : 0) * 397 ^ Brightness;
+            public override int GetHashCode() => ((Texture != null ? Texture.GetHashCode() : 0) * 397 ^ Brightness) * 2 + (Round ? 1 : 0);
         }
 
         private sealed class Batch
@@ -82,6 +89,7 @@ namespace LedScreens.Systems
         private CameraUpdateSystem m_CameraUpdateSystem;
         private EntityQuery m_ScreenQuery;
         private Mesh m_Quad;
+        private Mesh m_Disc;
         private Material m_Material;
         private MaterialPropertyBlock m_Properties;
         private int m_SurfaceSettingsHash;
@@ -107,6 +115,7 @@ namespace LedScreens.Systems
             });
 
             m_Quad = CreateQuad();
+            m_Disc = CreateDisc(64);
             m_Properties = new MaterialPropertyBlock();
             m_Material = CreateMaterial(MediaLibrary.Instance.NoSignal);
         }
@@ -117,6 +126,8 @@ namespace LedScreens.Systems
                 UnityEngine.Object.Destroy(m_Material);
             if (m_Quad != null)
                 UnityEngine.Object.Destroy(m_Quad);
+            if (m_Disc != null)
+                UnityEngine.Object.Destroy(m_Disc);
             base.OnDestroy();
         }
 
@@ -190,16 +201,16 @@ namespace LedScreens.Systems
                     int brightness = (int)math.round(screen.m_Brightness * settings.Brightness * mediaBrightness * 100f);
 
                     if ((surface.m_Faces & ScreenFaces.Front) != 0)
-                        AddFace(transform, surface.m_FrontCenter, surface.m_FrontRotation, surface.m_Size, cameraPosition, texture, brightness);
+                        AddFace(transform, surface.m_FrontCenter, surface.m_FrontRotation, surface.m_Size, surface.m_Round, cameraPosition, texture, brightness);
                     if ((surface.m_Faces & ScreenFaces.Back) != 0)
-                        AddFace(transform, surface.m_BackCenter, surface.m_BackRotation, surface.m_Size, cameraPosition, texture, brightness);
+                        AddFace(transform, surface.m_BackCenter, surface.m_BackRotation, surface.m_Size, surface.m_Round, cameraPosition, texture, brightness);
                 }
             }
 
             DrawBatches(camera);
         }
 
-        private void AddFace(Transform transform, float3 localCenter, quaternion localRotation, float2 size, float3 cameraPosition, Texture texture, int brightness)
+        private void AddFace(Transform transform, float3 localCenter, quaternion localRotation, float2 size, bool round, float3 cameraPosition, Texture texture, int brightness)
         {
             float3 center = transform.m_Position + math.mul(transform.m_Rotation, localCenter);
             quaternion rotation = math.mul(transform.m_Rotation, localRotation);
@@ -214,7 +225,7 @@ namespace LedScreens.Systems
             if (!GeometryUtility.TestPlanesAABB(m_FrustumPlanes, bounds))
                 return;
 
-            var key = new BatchKey(texture, brightness);
+            var key = new BatchKey(texture, brightness, round);
             if (!m_Batches.TryGetValue(key, out var batch))
             {
                 batch = m_BatchPool.Count > 0 ? m_BatchPool.Pop() : new Batch();
@@ -239,6 +250,8 @@ namespace LedScreens.Systems
                 m_Properties.Clear();
                 m_Properties.SetTexture(kUnlitColorMap, pair.Key.Texture);
                 m_Properties.SetColor(kUnlitColor, Color.white * (pair.Key.Brightness / 100f));
+                m_Properties.SetVector(kUnlitColorMapST, pair.Key.Round ? CoverSquare(pair.Key.Texture) : new Vector4(1f, 1f, 0f, 0f));
+                Mesh mesh = pair.Key.Round ? m_Disc : m_Quad;
 
                 var renderParams = new RenderParams(m_Material)
                 {
@@ -251,7 +264,7 @@ namespace LedScreens.Systems
                 };
 
                 foreach (var matrix in batch.Matrices)
-                    Graphics.RenderMesh(renderParams, m_Quad, 0, matrix);
+                    Graphics.RenderMesh(renderParams, mesh, 0, matrix);
 
                 drawn += batch.Matrices.Count;
                 batch.Matrices.Clear();
@@ -314,6 +327,11 @@ namespace LedScreens.Systems
                 float centerY = bounds.min.y + size.y * insetBottom + height * 0.5f;
                 faceCenter = new float3(center.x, centerY, center.z);
             }
+            if (data.m_Round)
+            {
+                float diameter = math.min(width, height) * kRoundInset;
+                width = height = diameter;
+            }
             if (width <= 0.01f || height <= 0.01f)
                 return default;
 
@@ -332,6 +350,7 @@ namespace LedScreens.Systems
             {
                 m_Valid = true,
                 m_Faces = faces,
+                m_Round = data.m_Round,
                 m_Size = new float2(width, height),
                 m_FrontCenter = faceCenter + normal * distance,
                 m_BackCenter = faceCenter - normal * distance,
@@ -373,6 +392,56 @@ namespace LedScreens.Systems
             mesh.RecalculateBounds();
             mesh.UploadMeshData(true);
             return mesh;
+        }
+
+        /// <summary>Unit disc in the XY plane, visible from -Z, with UVs like the quad's.</summary>
+        private static Mesh CreateDisc(int segments)
+        {
+            var vertices = new Vector3[segments + 1];
+            var uv = new Vector2[segments + 1];
+            var normals = new Vector3[segments + 1];
+            var tangents = new Vector4[segments + 1];
+            var triangles = new int[segments * 3];
+            uv[0] = new Vector2(0.5f, 0.5f);
+            for (int i = 0; i <= segments; i++)
+            {
+                normals[i] = Vector3.back;
+                tangents[i] = new Vector4(1f, 0f, 0f, -1f);
+                if (i == 0)
+                    continue;
+                float angle = (i - 1) * 2f * Mathf.PI / segments;
+                var p = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 0.5f;
+                vertices[i] = p;
+                uv[i] = p + new Vector2(0.5f, 0.5f);
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                // Clockwise seen from -Z, like the quad.
+                triangles[i * 3] = 0;
+                triangles[i * 3 + 1] = 1 + (i + 1) % segments;
+                triangles[i * 3 + 2] = 1 + i;
+            }
+
+            var mesh = new Mesh { name = "LedScreens_Disc" };
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.normals = normals;
+            mesh.tangents = tangents;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            mesh.UploadMeshData(true);
+            return mesh;
+        }
+
+        /// <summary>Texture scale/offset that crops the middle square of the image, so a round screen isn't squashed.</summary>
+        private static Vector4 CoverSquare(Texture texture)
+        {
+            if (texture == null || texture.width <= 0 || texture.height <= 0)
+                return new Vector4(1f, 1f, 0f, 0f);
+            float aspect = (float)texture.width / texture.height;
+            return aspect >= 1f
+                ? new Vector4(1f / aspect, 1f, (1f - 1f / aspect) * 0.5f, 0f)
+                : new Vector4(1f, aspect, 0f, (1f - aspect) * 0.5f);
         }
 
         private static Material CreateMaterial(Texture placeholder)

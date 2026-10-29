@@ -29,6 +29,8 @@ namespace LedScreens.Prefabs
 
         public float m_SurfaceOffset = 0.02f;
 
+        public bool m_Round;
+
         public override void GetPrefabComponents(HashSet<ComponentType> components)
         {
             components.Add(ComponentType.ReadWrite<LedScreenData>());
@@ -55,6 +57,7 @@ namespace LedScreens.Prefabs
                 m_InsetTop = m_InsetTop,
                 m_InsetBottom = m_InsetBottom,
                 m_SurfaceOffset = m_SurfaceOffset,
+                m_Round = m_Round,
             });
         }
     }
