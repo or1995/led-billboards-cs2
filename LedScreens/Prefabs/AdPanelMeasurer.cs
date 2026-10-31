@@ -24,6 +24,9 @@ namespace LedScreens.Prefabs
 
             /// <summary>When over 0: distance from the centre back to the board's own back surface, where the back screen goes.</summary>
             public float m_BackDistance;
+
+            /// <summary>Curved ad face: how far the left and right edges sit behind the middle, in meters (0 = flat).</summary>
+            public float m_Curve;
         }
 
         public static bool TryMeasure(PrefabBase prefab, out Panel panel)
@@ -304,6 +307,9 @@ namespace LedScreens.Prefabs
                 return false;
 
             float3 mid = (min + max) * 0.5f;
+            float curve = MeasureCurve(corners, normals, axis, right, mid.x, size.x * 0.5f);
+            if (curve > 0f)
+                Mod.log.Info($"Curved ad face: edges {curve:0.000} m behind the middle");
             panel = new Panel
             {
                 m_Center = right * mid.x + up * mid.y + axis * mid.z,
@@ -311,8 +317,47 @@ namespace LedScreens.Prefabs
                 m_Normal = axis,
                 m_HalfDepth = (max.z - min.z) * 0.5f,
                 m_Faces = backArea > 0.2f * totalArea ? ScreenFaces.Both : ScreenFaces.Front,
+                m_Curve = curve,
             };
             return true;
+        }
+
+        /// <summary>
+        /// Fits the front of the ad face as a parabola across its width: depth = middle - curve * x²
+        /// with x from -1 to 1. Returns the curve when the face clearly bends back towards its
+        /// edges, else 0 (flat).
+        /// </summary>
+        private static float MeasureCurve(List<float3> corners, List<float4> normals, float3 axis, float3 right, float midX, float halfWidth)
+        {
+            if (halfWidth < 0.05f)
+                return 0f;
+            double sw = 0, st = 0, sd = 0, stt = 0, std = 0, sdd = 0;
+            for (int i = 0; i < normals.Count; i++)
+            {
+                float4 n = normals[i];
+                if (math.dot(math.normalize(n.xyz), axis) < 0.3f)
+                    continue;
+                float3 c = (corners[3 * i] + corners[3 * i + 1] + corners[3 * i + 2]) / 3f;
+                float x = (math.dot(c, right) - midX) / halfWidth;
+                double t = x * x, d = math.dot(c, axis), w = n.w;
+                sw += w;
+                st += w * t;
+                sd += w * d;
+                stt += w * t * t;
+                std += w * t * d;
+                sdd += w * d * d;
+            }
+            if (sw <= 0)
+                return 0f;
+            double meanT = st / sw, meanD = sd / sw;
+            double varT = stt / sw - meanT * meanT, varD = sdd / sw - meanD * meanD, cov = std / sw - meanT * meanD;
+            if (varT < 1e-4 || varD < 1e-8)
+                return 0f;
+            double slope = cov / varT;
+            double fit = cov * cov / (varT * varD);
+            if (slope > -0.02 || fit < 0.7)
+                return 0f;
+            return (float)math.min(-slope, halfWidth);
         }
     }
 }

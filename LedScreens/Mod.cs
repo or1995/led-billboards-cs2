@@ -42,6 +42,7 @@ namespace LedScreens
 
             // Vanilla prefabs are loaded after mods, so the screen prefabs are created on game preload.
             updateSystem.UpdateAt<LedScreenPrefabSystem>(SystemUpdatePhase.PrefabUpdate);
+            updateSystem.UpdateAt<LedRoadSpacingSystem>(SystemUpdatePhase.Modification1);
             updateSystem.UpdateAt<LedScreenInitSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LedScreenRenderSystem>(SystemUpdatePhase.Rendering);
             updateSystem.UpdateAt<LedScreenSection>(SystemUpdatePhase.UIUpdate);

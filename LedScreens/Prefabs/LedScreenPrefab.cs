@@ -25,6 +25,9 @@ namespace LedScreens.Prefabs
         /// <summary>When over 0, the back screen sits this far behind the panel centre (on the board's own back).</summary>
         public float m_PanelBackDistance;
 
+        /// <summary>Curved ad face: how far its left and right edges sit behind the middle (0 = flat).</summary>
+        public float m_PanelCurve;
+
         public float m_InsetSide = 0.03f;
 
         public float m_InsetTop = 0.03f;
@@ -61,6 +64,7 @@ namespace LedScreens.Prefabs
                 m_PanelNormal = m_PanelNormal,
                 m_PanelHalfDepth = m_PanelHalfDepth,
                 m_PanelBackDistance = m_PanelBackDistance,
+                m_PanelCurve = m_PanelCurve,
                 m_InsetSide = m_InsetSide,
                 m_InsetTop = m_InsetTop,
                 m_InsetBottom = m_InsetBottom,

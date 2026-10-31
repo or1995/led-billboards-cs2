@@ -41,6 +41,9 @@ namespace LedScreens.Components
         /// <summary>When over 0, the back face sits this far behind the panel centre instead of at m_PanelHalfDepth.</summary>
         public float m_PanelBackDistance;
 
+        /// <summary>Curved ad face: its left and right edges sit this far behind the middle (0 = flat).</summary>
+        public float m_PanelCurve;
+
         public float m_InsetSide;
 
         public float m_InsetTop;

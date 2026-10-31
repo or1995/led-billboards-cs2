@@ -30,6 +30,8 @@ namespace LedScreens
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.DefaultMedia)), "What new screens play. Also used by 'Apply to selected screen'." },
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.RoadSideShuffle)), "Road-side screens shuffle all media" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.RoadSideShuffle)), "Screens drawn along a road (in its tree spots) each shuffle through all your media in their own order. Turn off to have them play the media above." },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.RoadSideSpacing)), "Road-side spacing" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.RoadSideSpacing)), "For screens newly added along a road: 1 puts a screen in every tree spot, 2 in every second one, 3 in every third, and so on. Each street can be changed later in its panel (click the street name)." },
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.ApplyToSelected)), "Apply to selected screen" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.ApplyToSelected)), "Click a screen in the city first, then open this menu, pick the media above and press this button." },
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.OpenMediaFolder)), "Open media folder" },

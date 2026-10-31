@@ -4,7 +4,7 @@
     <Configurations>Debug;Release</Configurations>
     <RootNamespace>LedScreens</RootNamespace>
     <AssemblyName>LedScreens</AssemblyName>
-    <Version>0.4.5</Version>
+    <Version>0.5.0</Version>
     <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
     <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
   </PropertyGroup>

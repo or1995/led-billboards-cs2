@@ -32,6 +32,7 @@ Open **Landscaping → LED Screens** and pick a prop:
 | LED Ticker Strip (Short / Long) | Long, thin strips for news tickers and shop fronts |
 | LED Video Wall (2×1 / 2×2 / 3×2) | Big wall screens made of several large panels |
 | LED Facade Screen (3×3 / 5×3 / 6×5), LED Facade Tower (Portrait) | Building-sized screens, up to about 50 × 20 m |
+| LED Skyscraper Screen (Tall / Wide / Mega), Strip, Crown Band | Huge screens for the side of a tower, up to about 67 × 47 m (Strip: 63 m tall, Crown Band: 100 m wide); they snap to the wall centred where you click |
 | LED Billboard (Small / Small 2 / Medium / Large / Huge) | Free-standing billboards on legs, with a screen on both sides |
 | LED Street Totem (single or double-sided) | A tall street-level screen on a short pole |
 | LED Roadside Screen (Large / Huge / Large Double-Sided) | Low screens on poles, for roadsides and car parks |
@@ -44,6 +45,10 @@ Open **Landscaping → LED Screens** and pick a prop:
 | LED Bridge Side Screen (16 / 24 / 32 m) | Double-sided strips hanging at the side of a pedestrian bridge (deck at the default 10 m elevation); line one up along each side |
 | LED Screen Cube (Hanging, Large / Medium) | Four screens around a box, floating at road-clearance height: put it under an arch, gantry or bridge |
 | LED Screen Cube on Pole (Large / Medium) | Four-sided screen cube on a pole hidden inside it |
+| LED Standing Sign (1 / 2) | The small rounded vanilla standing signs, double-sided; the video curves with the board |
+| LED Wall Screen (Small 2-4, Medium 2, Large 2-4) | The other vanilla wall billboard styles |
+| LED Poster (Small / Medium / Large / Huge) | The vanilla posters |
+| LED Shop Sign, LED Hanging Shop Sign, LED Neon-Style Sign, LED Round Shop Sign | The vanilla shop signs for building fronts; hanging signs stick out from the wall and show both sides |
 
 Each prop has its own icon in the toolbar showing its shape.
 
@@ -58,6 +63,7 @@ Some street-level screens can be drawn along a road the way trees are:
 - LED Lamp-Post Banner, LED City Light Poster, LED Sidewalk Sign, LED Street Ticker
 - LED High-Pole Screen (Medium, single or double-sided) and (Large, Double-Sided)
 - LED Round Sign on Pole (all)
+- LED Standing Sign (1 / 2)
 - LED Screen Cube on Pole (Medium)
 
 1. Pick the screen, then switch the tool to **Line** or **Curve** mode.
@@ -67,6 +73,8 @@ Some street-level screens can be drawn along a road the way trees are:
 The screens fill the road's tree spots, facing along the road. Double-sided screens are best here. Each one shuffles through all your media in its own order, switching every 30 seconds (change it per screen in the info panel). To have them play the **Media** setting instead, turn off *Road-side screens shuffle all media* in the options.
 
 Road-side screens can't be clicked one by one (the game sends those clicks to the road, which has no panel). Instead, **click the street's name label**: the street panel has an **LED Screens on this street** section with the usual controls (media, playlist, effect, speed, brightness), and changes apply to all the road-side screens along that street.
+
+**Spacing:** the road decides where its tree spots are, so the street panel's **Spacing** buttons keep a screen in every spot (*All*) or in one in 2 to 6 spots, along each side of every road segment. The others are removed and come back if you make the spacing smaller again. The *Road-side spacing* option sets the starting spacing for streets you line from now on. While placing, the preview still shows every spot.
 
 ## 3. Change what a screen shows
 
@@ -107,6 +115,7 @@ Changes apply immediately and are saved with the city.
 | **Media** | What new screens show. |
 | **Apply to selected screen** | Older way to set a selected screen's media; the info panel is easier. |
 | **Road-side screens shuffle all media** | Screens drawn along a road each shuffle through all your media. Off: they play the *Media* above. |
+| **Road-side spacing** | 1 puts a screen in every tree spot of a newly lined street, 2 in every second one, and so on up to 6. Change it per street in the street panel. |
 | **Open media folder / Reload media** | Manage your files. New files are picked up automatically; *Reload media* reloads everything. |
 | **Brightness** | Global brightness for all screens. |
 | **Draw distance** | Screens farther than this aren't drawn. |

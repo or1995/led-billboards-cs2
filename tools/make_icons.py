@@ -28,7 +28,7 @@ WALL_HUGE = (12.56, 5.89)
 STEEL = 0.22        # flag pole trunk
 CONCRETE = 2.2      # chimney trunk
 
-# kind: wall | stand | pole | round | roundpole | cube (poles = 0: hanging) | bridge
+# kind: wall | stand | pole | round | roundpole | cube (poles = 0: hanging) | bridge | tower | rounded | hanging | neon
 # Each entry: name, kind, panel size, columns, rows, elevation (bottom of screen), poles, pole diameter, double-sided
 ICONS = [
     ("LedScreenWallSmall01", "wall", WALL_SMALL, 1, 1, 0, 0, 0, False),
@@ -85,6 +85,47 @@ ICONS = [
     ("LedCubeHangingMedium", "cube", WALL_MEDIUM, 1, 2, 5.5, 0, 0, False),
     ("LedCubePoleLarge", "cube", WALL_LARGE, 1, 1, 9.0, 1, CONCRETE, False),
     ("LedCubePoleMedium", "cube", WALL_MEDIUM, 1, 2, 3.0, 1, STEEL, False),
+    ("LedSkyscraperTall4x12", "tower", WALL_LARGE, 4, 12, 0, 0, 0, False),
+    ("LedSkyscraperStrip2x16", "tower", WALL_LARGE, 2, 16, 0, 0, 0, False),
+    ("LedSkyscraperWide8x6", "tower", WALL_LARGE, 8, 6, 0, 0, 0, False),
+    ("LedSkyscraperMega8x12", "tower", WALL_LARGE, 8, 12, 0, 0, 0, False),
+    ("LedSkyscraperBand12x2", "tower", WALL_LARGE, 12, 2, 0, 0, 0, False),
+    ("LedSignScreen01", "rounded", (1.3, 1.75), 1, 1, 0.3, 1, 0.12, True),
+    ("LedSignScreen02", "rounded", (1.3, 1.75), 1, 1, 0.3, 1, 0.12, True),
+    ("LedRoundShopSign01", "round", (1.2, 1.2), 1, 1, 0, 0, 0, False),
+    ("LedWallSmall02", "wall", WALL_SMALL, 1, 1, 0, 0, 0, False),
+    ("LedWallSmall03", "wall", WALL_SMALL, 1, 1, 0, 0, 0, False),
+    ("LedWallSmall04", "wall", WALL_SMALL, 1, 1, 0, 0, 0, False),
+    ("LedWallMedium02", "wall", WALL_MEDIUM, 1, 1, 0, 0, 0, False),
+    ("LedWallLarge02", "wall", WALL_LARGE, 1, 1, 0, 0, 0, False),
+    ("LedWallLarge03", "wall", WALL_LARGE, 1, 1, 0, 0, 0, False),
+    ("LedWallLarge04", "wall", WALL_LARGE, 1, 1, 0, 0, 0, False),
+    ("LedPosterSmall01", "wall", (0.6, 0.9), 1, 1, 0, 0, 0, False),
+    ("LedPosterSmall02", "wall", (0.6, 0.9), 1, 1, 0, 0, 0, False),
+    ("LedPosterMedium01", "wall", (1.0, 1.5), 1, 1, 0, 0, 0, False),
+    ("LedPosterMedium02", "wall", (1.0, 1.5), 1, 1, 0, 0, 0, False),
+    ("LedPosterLarge01", "wall", (1.6, 2.4), 1, 1, 0, 0, 0, False),
+    ("LedPosterLarge02", "wall", (1.6, 2.4), 1, 1, 0, 0, 0, False),
+    ("LedPosterHuge01", "wall", (3.0, 4.5), 1, 1, 0, 0, 0, False),
+    ("LedPosterHuge02", "wall", (3.0, 4.5), 1, 1, 0, 0, 0, False),
+    ("LedShopSignSmall01", "wall", (1.6, 0.5), 1, 1, 0, 0, 0, False),
+    ("LedShopSignSmall02", "wall", (1.6, 0.5), 1, 1, 0, 0, 0, False),
+    ("LedShopSignMedium01", "wall", (2.6, 0.8), 1, 1, 0, 0, 0, False),
+    ("LedShopSignMedium02", "wall", (2.6, 0.8), 1, 1, 0, 0, 0, False),
+    ("LedShopSignLarge01", "wall", (4.0, 1.2), 1, 1, 0, 0, 0, False),
+    ("LedShopSignLarge02", "wall", (4.0, 1.2), 1, 1, 0, 0, 0, False),
+    ("LedHangingSignSmall01", "hanging", (0.7, 0.9), 1, 1, 0, 0, 0, True),
+    ("LedHangingSignSmall02", "hanging", (0.7, 0.9), 1, 1, 0, 0, 0, True),
+    ("LedHangingSignMedium01", "hanging", (1.0, 1.3), 1, 1, 0, 0, 0, True),
+    ("LedHangingSignMedium02", "hanging", (1.0, 1.3), 1, 1, 0, 0, 0, True),
+    ("LedHangingSignLarge01", "hanging", (1.4, 1.9), 1, 1, 0, 0, 0, True),
+    ("LedHangingSignLarge02", "hanging", (1.4, 1.9), 1, 1, 0, 0, 0, True),
+    ("LedNeonSignSmall01", "neon", (1.6, 0.6), 1, 1, 0, 0, 0, False),
+    ("LedNeonSignSmall02", "neon", (1.6, 0.6), 1, 1, 0, 0, 0, False),
+    ("LedNeonSignMedium01", "neon", (2.6, 0.9), 1, 1, 0, 0, 0, False),
+    ("LedNeonSignMedium02", "neon", (2.6, 0.9), 1, 1, 0, 0, 0, False),
+    ("LedNeonSignLarge01", "neon", (4.0, 1.4), 1, 1, 0, 0, 0, False),
+    ("LedNeonSignLarge02", "neon", (4.0, 1.4), 1, 1, 0, 0, 0, False),
 ]
 
 BEZEL = (24, 26, 30, 255)
@@ -225,9 +266,119 @@ def render_cube(name, panel, cols, rows, elevation, poles, diameter):
     return canvas
 
 
+def render_tower(name, panel, cols, rows):
+    """A tower block with lit windows and the screen on its side."""
+    big = SIZE * SS
+    canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(canvas)
+    sw, sh = panel[0] * cols, panel[1] * rows
+    bw = sw * 1.35
+    bh = max(sh * 1.5, bw * 1.1)
+    avail = big - 2 * PAD * SS
+    scale = avail / max(bw, bh)
+    bx0 = (big - bw * scale) / 2
+    by0 = (big - bh * scale) / 2
+    bx1, by1 = bx0 + bw * scale, by0 + bh * scale
+    d.rectangle((bx0, by0, bx1, by1), fill=(92, 104, 120, 255))
+    # Window grid.
+    nx, ny = 9, 14
+    cw, ch = (bx1 - bx0) / nx, (by1 - by0) / ny
+    rnd = random.Random(seed_of(name))
+    for i in range(nx):
+        for j in range(ny):
+            lit = rnd.random() < 0.35
+            color = (236, 214, 150, 255) if lit else (60, 70, 86, 255)
+            d.rectangle((bx0 + i * cw + cw * 0.18, by0 + j * ch + ch * 0.2, bx0 + (i + 1) * cw - cw * 0.18, by0 + (j + 1) * ch - ch * 0.25), fill=color)
+    # Screen in the upper part of the facade.
+    sx0 = (big - sw * scale) / 2
+    sy0 = by0 + (bh - sh) * scale * 0.35
+    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rectangle((sx0 + SS * 5, sy0 + SS * 6, sx0 + sw * scale + SS * 5, sy0 + sh * scale + SS * 6), fill=(0, 0, 0, 110))
+    canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(SS * 4)))
+    draw_screen(canvas, (sx0, sy0, sx0 + sw * scale, sy0 + sh * scale), name, 1, 1, False)
+    return canvas
+
+
+def render_hanging(name, panel):
+    """A double-sided sign sticking out of a wall on a bracket."""
+    big = SIZE * SS
+    canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(canvas)
+    sw, sh = panel
+    scene_w, scene_h = sw * 1.9, sh * 1.6
+    avail = big - 2 * PAD * SS
+    scale = avail / max(scene_w, scene_h)
+    ox, oy = (big - scene_w * scale) / 2, (big - scene_h * scale) / 2
+    wall_w = sw * 0.45 * scale
+    d.rounded_rectangle((ox, oy, ox + wall_w, oy + scene_h * scale), radius=SS * 4, fill=WALL)
+    sx0 = ox + wall_w + sw * 0.3 * scale
+    sy0 = oy + sh * 0.3 * scale
+    arm_y = sy0 + sh * scale * 0.12
+    d.rectangle((ox + wall_w, arm_y - SS * 3, sx0 + sw * scale * 0.5, arm_y + SS * 3), fill=STEEL_COLOR)
+    back = sw * 0.12 * scale
+    d.rounded_rectangle((sx0 + back, sy0 - back, sx0 + sw * scale + back, sy0 + sh * scale - back), radius=SS * 6, fill=(30, 30, 40, 255))
+    draw_screen(canvas, (sx0, sy0, sx0 + sw * scale, sy0 + sh * scale), name, 1, 1, False)
+    return canvas
+
+
+def render_rounded(name, panel, elevation, double):
+    """A rounded sign board standing on a short stem."""
+    big = SIZE * SS
+    canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(canvas)
+    sw, sh = panel
+    back = 0.12 * sw if double else 0
+    scene_w, scene_h = sw + back, (sh + elevation + back) * 1.05
+    avail = big - 2 * PAD * SS
+    scale = avail / max(scene_w, scene_h)
+    ox = (big - scene_w * scale) / 2
+    ground_y = (big + scene_h * scale) / 2
+    d.rounded_rectangle((ox - SS * 4, ground_y - SS * 3, ox + scene_w * scale + SS * 4, ground_y + SS * 5), radius=SS * 3, fill=GROUND)
+    cx = ox + sw * scale / 2
+    d.rectangle((cx - SS * 7, ground_y - (elevation + sh * 0.2) * scale, cx + SS * 7, ground_y), fill=(214, 214, 210, 255))
+    sx0, sy0 = ox, ground_y - (elevation + sh) * scale
+    radius = int(sw * scale * 0.18)
+    if double:
+        d.rounded_rectangle((sx0 + back * scale, sy0 - back * scale, sx0 + (sw + back) * scale, sy0 + (sh - back) * scale), radius=radius, fill=(210, 210, 206, 255))
+    d.rounded_rectangle((sx0, sy0, sx0 + sw * scale, sy0 + sh * scale), radius=radius, fill=(236, 236, 232, 255))
+    inset = sw * scale * 0.07
+    iw, ih = int(sw * scale - 2 * inset), int(sh * scale - 2 * inset)
+    content = screen_content(iw, ih, name)
+    mask = Image.new("L", (iw, ih), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, iw - 1, ih - 1), radius=int(radius * 0.8), fill=255)
+    canvas.paste(content, (int(sx0 + inset), int(sy0 + inset)), mask)
+    # Clip on top.
+    d.rectangle((cx - SS * 10, sy0 - SS * 7, cx + SS * 10, sy0 + SS * 2), fill=(214, 214, 210, 255))
+    return canvas
+
+
+def render_neon(name, panel):
+    """A wide sign on a dark wall with a neon-like glow around the screen."""
+    canvas = render("x" + name, "wall", panel, 1, 1, 0, 0, 0, False)
+    glow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    big = SIZE * SS
+    sw, sh = panel
+    margin = 0.18 * max(sw, sh)
+    scale = (big - 2 * PAD * SS) / (max(sw, sh) + 2 * margin)
+    x0 = (big - sw * scale) / 2
+    y0 = (big - sh * scale) / 2
+    ImageDraw.Draw(glow).rounded_rectangle((x0 - SS * 6, y0 - SS * 6, x0 + sw * scale + SS * 6, y0 + sh * scale + SS * 6), radius=SS * 8, outline=(255, 70, 200, 230), width=SS * 4)
+    canvas.alpha_composite(glow.filter(ImageFilter.GaussianBlur(SS * 3)))
+    canvas.alpha_composite(glow)
+    return canvas
+
+
 def render(name, kind, panel, cols, rows, elevation, poles, diameter, double):
     if kind == "cube":
         return render_cube(name, panel, cols, rows, elevation, poles, diameter)
+    if kind == "tower":
+        return render_tower(name, panel, cols, rows)
+    if kind == "hanging":
+        return render_hanging(name, panel)
+    if kind == "rounded":
+        return render_rounded(name, panel, elevation, double)
+    if kind == "neon":
+        return render_neon(name, panel)
     big = SIZE * SS
     canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     d = ImageDraw.Draw(canvas)

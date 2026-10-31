@@ -37,8 +37,8 @@ namespace LedScreens.Components
     /// <summary>Per placed screen: what it plays and how. Saved with the city.</summary>
     public struct LedScreen : IComponentData, IQueryTypeParameter, ISerializable
     {
-        // 1: media, speed, brightness, offset, flags. 2: + playlist mode, interval, seed. 3: + effect.
-        private const int kVersion = 3;
+        // 1: media, speed, brightness, offset, flags. 2: + playlist mode, interval, seed. 3: + effect. 4: + spacing.
+        private const int kVersion = 4;
 
         public const float kDefaultInterval = 10f;
 
@@ -64,6 +64,9 @@ namespace LedScreens.Components
 
         public ScreenEffect m_Effect;
 
+        /// <summary>Road-side screens: keep one in this many of the road's tree spots (1 = all).</summary>
+        public int m_Spacing;
+
         public static LedScreen Create(string media)
         {
             var screen = new LedScreen
@@ -73,6 +76,7 @@ namespace LedScreens.Components
                 m_Flags = LedScreenFlags.Initialized,
                 m_Interval = kDefaultInterval,
                 m_Seed = (uint)UnityEngine.Random.Range(1, int.MaxValue),
+                m_Spacing = 1,
             };
             screen.m_Media.CopyFromTruncated(media ?? string.Empty);
             return screen;
@@ -90,6 +94,7 @@ namespace LedScreens.Components
             writer.Write(m_Interval);
             writer.Write(m_Seed);
             writer.Write((int)m_Effect);
+            writer.Write(m_Spacing);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -121,6 +126,10 @@ namespace LedScreens.Components
                 reader.Read(out int effect);
                 m_Effect = (ScreenEffect)effect;
             }
+
+            m_Spacing = 1;
+            if (version >= 4)
+                reader.Read(out m_Spacing);
         }
     }
 }

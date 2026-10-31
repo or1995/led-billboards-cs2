@@ -3,7 +3,7 @@
  *
  * Id: LedScreens
  * Author: LedScreens
- * Version: 0.4.5
+ * Version: 0.5.0
  * Dependencies:
  */
 
@@ -105,6 +105,29 @@ function EffectControls({ effect, defaultEffect }) {
             }))));
 }
 
+const MAX_SPACING = 6;
+const ORDINALS = ["", "", "second", "third", "fourth", "fifth", "sixth"];
+
+/** Street panel: keep a screen in every tree spot, or in one in N. */
+function SpacingControls({ spacing }) {
+    const counts = Array.from({ length: MAX_SPACING }, (_, i) => i + 1);
+    return h(React.Fragment, null,
+        h(PanelSectionRow, {
+            left: "Spacing",
+            right: spacing === 1 ? "Every tree spot" : `1 in ${spacing} tree spots`,
+            subRow: true,
+        }),
+        ButtonRow(...counts.map((n) => h(SmallButton, {
+            key: n,
+            label: n === 1 ? "All" : `1 in ${n}`,
+            selected: spacing === n,
+            tooltip: n === 1
+                ? "A screen in every tree spot of the road"
+                : `A screen in every ${ORDINALS[n]} tree spot, along each side of every road segment`,
+            onSelect: () => trigger(GROUP, "setSpacing", n),
+        }))));
+}
+
 const PLAYLIST_OFF = 0;
 const PLAYLIST_IN_ORDER = 1;
 const PLAYLIST_SHUFFLE = 2;
@@ -191,6 +214,7 @@ function LedScreenSection(props) {
             : "Animated LED screen. Put GIF, PNG, JPG or video files in the media folder.",
     },
         h(PanelSectionRow, { uppercase: true, left: onRoad ? `LED Screens on this street (${roadScreens})` : "LED Screen" }),
+        onRoad ? h(SpacingControls, props) : null,
         playlistOn ? null : h(PanelSectionRow, { left: "Media", right: mediaPicker }),
         h(PlaylistControls, props),
 

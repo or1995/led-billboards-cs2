@@ -60,6 +60,9 @@ namespace LedScreens.Systems
             public bool m_Round;
             public float2 m_Size;
 
+            /// <summary>Front and back faces bend back this far at their left and right edges (0 = flat).</summary>
+            public float m_Curve;
+
             /// <summary>Per face (front, back, left, right): centre and rotation in prefab space.</summary>
             public float3[] m_Centers;
             public quaternion[] m_Rotations;
@@ -70,19 +73,21 @@ namespace LedScreens.Systems
             public readonly Texture Texture;
             public readonly int Brightness; // hundredths, so nearly-equal values share a batch
             public readonly bool Round;
+            public readonly bool Curved;
 
-            public BatchKey(Texture texture, int brightness, bool round)
+            public BatchKey(Texture texture, int brightness, bool round, bool curved)
             {
                 Texture = texture;
                 Brightness = brightness;
                 Round = round;
+                Curved = curved;
             }
 
-            public bool Equals(BatchKey other) => ReferenceEquals(Texture, other.Texture) && Brightness == other.Brightness && Round == other.Round;
+            public bool Equals(BatchKey other) => ReferenceEquals(Texture, other.Texture) && Brightness == other.Brightness && Round == other.Round && Curved == other.Curved;
 
             public override bool Equals(object obj) => obj is BatchKey other && Equals(other);
 
-            public override int GetHashCode() => ((Texture != null ? Texture.GetHashCode() : 0) * 397 ^ Brightness) * 2 + (Round ? 1 : 0);
+            public override int GetHashCode() => ((Texture != null ? Texture.GetHashCode() : 0) * 397 ^ Brightness) * 4 + (Round ? 1 : 0) + (Curved ? 2 : 0);
         }
 
         private sealed class Batch
@@ -100,6 +105,7 @@ namespace LedScreens.Systems
         private EntityQuery m_ScreenQuery;
         private Mesh m_Quad;
         private Mesh m_Disc;
+        private Mesh m_CurvedQuad;
         private Material m_Material;
         private MaterialPropertyBlock m_Properties;
         private int m_SurfaceSettingsHash;
@@ -136,6 +142,7 @@ namespace LedScreens.Systems
 
             m_Quad = CreateQuad();
             m_Disc = CreateDisc(64);
+            m_CurvedQuad = CreateCurvedQuad(24);
             m_Properties = new MaterialPropertyBlock();
             m_Material = CreateMaterial(MediaLibrary.Instance.NoSignal);
         }
@@ -148,6 +155,8 @@ namespace LedScreens.Systems
                 UnityEngine.Object.Destroy(m_Quad);
             if (m_Disc != null)
                 UnityEngine.Object.Destroy(m_Disc);
+            if (m_CurvedQuad != null)
+                UnityEngine.Object.Destroy(m_CurvedQuad);
             base.OnDestroy();
         }
 
@@ -246,7 +255,7 @@ namespace LedScreens.Systems
                     for (int f = 0; f < kFaceBits.Length; f++)
                     {
                         if ((visibleMask & (1 << f)) != 0)
-                            AddFace(m_VisibleFaces[f], surface.m_Size, surface.m_Round, texture, brightness);
+                            AddFace(m_VisibleFaces[f], surface.m_Size, surface.m_Round, f < 2 ? surface.m_Curve : 0f, texture, brightness);
                     }
                 }
             }
@@ -279,10 +288,11 @@ namespace LedScreens.Systems
             return true;
         }
 
-        private void AddFace(in VisibleFace face, float2 size, bool round, Texture texture, int brightness)
+        private void AddFace(in VisibleFace face, float2 size, bool round, float curve, Texture texture, int brightness)
         {
             var bounds = face.m_Bounds;
-            var key = new BatchKey(texture, brightness, round);
+            bool curved = curve > 0f && !round;
+            var key = new BatchKey(texture, brightness, round, curved);
             if (!m_Batches.TryGetValue(key, out var batch))
             {
                 batch = m_BatchPool.Count > 0 ? m_BatchPool.Pop() : new Batch();
@@ -294,7 +304,8 @@ namespace LedScreens.Systems
                 batch.Bounds.Encapsulate(bounds);
             }
 
-            batch.Matrices.Add(Matrix4x4.TRS(face.m_Center, face.m_Rotation, new Vector3(size.x, size.y, 1f)));
+            // The curved mesh bends back by 1 at its edges; the z scale makes that the face's own curve.
+            batch.Matrices.Add(Matrix4x4.TRS(face.m_Center, face.m_Rotation, new Vector3(size.x, size.y, curved ? curve : 1f)));
         }
 
         private void DrawBatches(Camera camera)
@@ -308,7 +319,7 @@ namespace LedScreens.Systems
                 m_Properties.SetTexture(kUnlitColorMap, pair.Key.Texture);
                 m_Properties.SetColor(kUnlitColor, Color.white * (pair.Key.Brightness / 100f));
                 m_Properties.SetVector(kUnlitColorMapST, pair.Key.Round ? CoverSquare(pair.Key.Texture) : new Vector4(1f, 1f, 0f, 0f));
-                Mesh mesh = pair.Key.Round ? m_Disc : m_Quad;
+                Mesh mesh = pair.Key.Round ? m_Disc : pair.Key.Curved ? m_CurvedQuad : m_Quad;
 
                 var renderParams = new RenderParams(m_Material)
                 {
@@ -416,6 +427,7 @@ namespace LedScreens.Systems
                 m_Faces = faces,
                 m_Round = data.m_Round,
                 m_Size = new float2(width, height),
+                m_Curve = data.m_HasPanel ? data.m_PanelCurve : 0f,
                 m_Centers = new[]
                 {
                     faceCenter + normal * distance,
@@ -440,6 +452,51 @@ namespace LedScreens.Systems
             {
                 return ((int)faces * 397 ^ offset.GetHashCode()) * 397 ^ inset.GetHashCode();
             }
+        }
+
+        /// <summary>
+        /// Like the unit quad, but bent back (towards +Z) like the curved front of a sign: z = (2x)²,
+        /// so 0 in the middle and 1 at the left and right edges. The draw matrix scales z to the real depth.
+        /// </summary>
+        private static Mesh CreateCurvedQuad(int columns)
+        {
+            var mesh = new Mesh { name = "LedScreens_CurvedQuad" };
+            var vertices = new Vector3[(columns + 1) * 2];
+            var uv = new Vector2[vertices.Length];
+            var normals = new Vector3[vertices.Length];
+            var tangents = new Vector4[vertices.Length];
+            for (int i = 0; i <= columns; i++)
+            {
+                float u = i / (float)columns;
+                float x = u - 0.5f;
+                float z = 4f * x * x;
+                vertices[i * 2] = new Vector3(x, -0.5f, z);
+                vertices[i * 2 + 1] = new Vector3(x, 0.5f, z);
+                uv[i * 2] = new Vector2(u, 0f);
+                uv[i * 2 + 1] = new Vector2(u, 1f);
+                normals[i * 2] = normals[i * 2 + 1] = Vector3.back;
+                tangents[i * 2] = tangents[i * 2 + 1] = new Vector4(1f, 0f, 0f, -1f);
+            }
+            var triangles = new int[columns * 6];
+            for (int i = 0; i < columns; i++)
+            {
+                int v = i * 2;
+                // Same winding as the flat quad: bottom-left, top-left, bottom-right; top-left, top-right, bottom-right.
+                triangles[i * 6] = v;
+                triangles[i * 6 + 1] = v + 1;
+                triangles[i * 6 + 2] = v + 2;
+                triangles[i * 6 + 3] = v + 1;
+                triangles[i * 6 + 4] = v + 3;
+                triangles[i * 6 + 5] = v + 2;
+            }
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.normals = normals;
+            mesh.tangents = tangents;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            mesh.UploadMeshData(true);
+            return mesh;
         }
 
         /// <summary>Unit quad in the XY plane, visible from -Z, with UV (0,0) at the bottom left.</summary>

@@ -34,6 +34,8 @@ namespace LedScreens.Systems
         private readonly System.Collections.Generic.List<Entity> m_Targets = new System.Collections.Generic.List<Entity>();
         private readonly System.Collections.Generic.HashSet<Entity> m_Seen = new System.Collections.Generic.HashSet<Entity>();
         private bool m_RoadSelected;
+        private int m_WrittenCount;
+        private LedRoadSpacingSystem m_SpacingSystem;
 
         private Entity Primary => m_Targets.Count > 0 ? m_Targets[0] : Entity.Null;
 
@@ -43,11 +45,13 @@ namespace LedScreens.Systems
         {
             base.OnCreate();
             m_InfoUISystem.AddMiddleSection(this);
+            m_SpacingSystem = World.GetOrCreateSystemManaged<LedRoadSpacingSystem>();
 
             AddBinding(new TriggerBinding<string>(kGroup, "setMedia", SetMedia));
             AddBinding(new TriggerBinding<float>(kGroup, "setSpeed", value => Modify((ref LedScreen s) => s.m_Speed = Mathf.Clamp(value, kMinSpeed, kMaxSpeed))));
             AddBinding(new TriggerBinding<float>(kGroup, "setBrightness", value => Modify((ref LedScreen s) => s.m_Brightness = Mathf.Clamp(value, kMinBrightness, kMaxBrightness))));
             AddBinding(new TriggerBinding<int>(kGroup, "setEffect", value => Modify((ref LedScreen s) => s.m_Effect = (ScreenEffect)Mathf.Clamp(value, 0, 3))));
+            AddBinding(new TriggerBinding<int>(kGroup, "setSpacing", SetSpacing));
             AddBinding(new TriggerBinding(kGroup, "syncStart", () => Modify((ref LedScreen s) => s.m_TimeOffset = 0f)));
             AddBinding(new TriggerBinding(kGroup, "randomStart", () => Modify((ref LedScreen s) => s.m_TimeOffset = UnityEngine.Random.Range(0f, 600f))));
             AddBinding(new TriggerBinding(kGroup, "useForNewScreens", UseForNewScreens));
@@ -143,6 +147,9 @@ namespace LedScreens.Systems
                 m_MediaVersion = MediaLibrary.Instance.Version;
                 m_InfoUISystem.RequestUpdate();
             }
+            // Street screens added or removed (spacing changes take a frame): refresh the count.
+            if (visible && m_RoadSelected && m_Targets.Count != m_WrittenCount)
+                m_InfoUISystem.RequestUpdate();
             // While a playlist runs, refresh the panel so "Now playing" follows the screen.
             Entity primary = Primary;
             if (visible && m_Screen.m_Playlist != PlaylistMode.Off && primary != Entity.Null && EntityManager.Exists(primary) &&
@@ -171,8 +178,11 @@ namespace LedScreens.Systems
             string media = m_Screen.m_Media.ToString();
             var available = MediaLibrary.Instance.Available;
 
+            m_WrittenCount = m_Targets.Count;
             writer.PropertyName("roadScreens");
             writer.Write(m_RoadSelected ? m_Targets.Count : 0);
+            writer.PropertyName("spacing");
+            writer.Write(Mathf.Max(1, m_Screen.m_Spacing));
             writer.PropertyName("media");
             writer.Write(media);
             writer.PropertyName("nowPlaying");
@@ -223,6 +233,25 @@ namespace LedScreens.Systems
                 EntityManager.SetComponentData(entity, screen);
             }
             m_InfoUISystem.RequestUpdate();
+        }
+
+        private void SetSpacing(int value)
+        {
+            value = Mathf.Clamp(value, 1, LedRoadSpacingSystem.kMaxSpacing);
+            foreach (Entity entity in m_Targets)
+            {
+                if (!EntityManager.TryGetComponent<LedScreen>(entity, out var screen) ||
+                    !EntityManager.TryGetComponent<Game.Common.Owner>(entity, out var owner))
+                {
+                    continue;
+                }
+                // Closer together: have the game put the removed screens back, then thin them again.
+                if (value < Mathf.Max(1, screen.m_Spacing))
+                    m_SpacingSystem.Regenerate(owner.m_Owner);
+                else
+                    m_SpacingSystem.Thin(owner.m_Owner);
+            }
+            Modify((ref LedScreen s) => s.m_Spacing = value);
         }
 
         private void SetMedia(string media)

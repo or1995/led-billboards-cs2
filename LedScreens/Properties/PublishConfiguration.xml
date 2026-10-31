@@ -23,11 +23,11 @@ Please report problems on GitHub (link below) with a screenshot and your `Logs/L
 
 Adds placeable **animated LED screens and digital billboards**. Every screen plays your own media, and each one can show something different.
 
-- **About 54 screens, each with its own icon:** wall screens, posters, ticker strips, **video walls and building facades** (up to about 50 × 20 m), free-standing billboards, street totems, roadside screens, **high-pole screens** (up to *Mega* and *Ribbon*, plus portrait and **double-sided** versions), round signs, **four-sided screen cubes** (hanging or on a pole) and **bridge side screens**
+- **About 95 screens, each with its own icon:** wall screens, posters, ticker strips, **video walls and building facades**, **skyscraper screens** (up to about 67 × 47 m), free-standing billboards, street totems, roadside screens, **high-pole screens** (up to *Mega* and *Ribbon*, plus portrait and **double-sided** versions), round signs, **four-sided screen cubes** (hanging or on a pole), **bridge side screens**, and LED versions of more vanilla props: wall billboard styles, posters, shop signs, hanging and neon-style signs, and the small standing signs (with a **curved** screen that follows the board)
 - **Media:** animated **GIF**, **PNG/JPG** images and **videos** (MP4, WebM, MOV and more)
 - **Per-screen controls** in the info panel: media, speed, brightness, LED effect, sync / random start
 - **Playlists:** cycle through several files **in order** or **shuffled**
-- **Along roads like trees:** street-level screens can be drawn along a road in Line/Curve mode, filling its tree spots; each one shuffles your media, and the street's panel (click the street name) controls them all
+- **Along roads like trees:** street-level screens can be drawn along a road in Line/Curve mode, filling its tree spots; each one shuffles your media, and the street's panel (click the street name) controls them all, including their **spacing** (every tree spot, or one in 2 to 6)
 - **Optional LED look:** *Pixelated* or *LED dots* effect, for all screens or per screen
 - **Live media folder:** new and changed files show up in game within seconds
 - **Self-lit:** screens keep the same brightness day and night
@@ -56,12 +56,20 @@ https://github.com/or1995/led-billboards-cs2
 	<!--Tag, can be set multiple times-->
 	<Tag Value="Code Mod" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.4.5" />
+	<ModVersion Value="0.5.0" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.6.*" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-0.4.5 (work in progress, experimental: back up your saves)
+0.5.0 (work in progress, experimental: back up your saves)
+- New: LED Skyscraper Screens for the sides of towers: Tall (34×47 m), Strip (17×63 m), Wide (67×24 m), Mega (67×47 m) and Crown Band (100×8 m)
+- New: LED Standing Signs (the small rounded vanilla signs), double-sided, with the video curved to follow the board; they can also be drawn along roads
+- New: LED versions of more vanilla props: wall billboard styles (Small 2-4, Medium 2, Large 2-4), posters (Small to Huge), shop signs, hanging shop signs, neon-style signs and a round shop sign
+- New: road-side spacing: in the street panel, keep a screen in every tree spot or in one in 2 to 6; a setting sets it for newly lined streets
+- Road-side screens the game rebuilds (e.g. after a road upgrade) keep the street's media and playlist
+- Existing screens in your saves are kept
+
+0.4.5
 - New: LED Screen Cubes, four screens around a box: hanging (Large / Medium, to put under an arch, gantry or bridge) or on a pole (Large / Medium)
 - New: LED Bridge Side Screens (16 / 24 / 32 m), double-sided strips to line the sides of a pedestrian bridge at the default 10 m height
 - Road-side screens can now be controlled: click the street's name, and its panel has an "LED Screens on this street" section that changes all of them

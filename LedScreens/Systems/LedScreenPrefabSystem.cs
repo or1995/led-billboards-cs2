@@ -29,7 +29,7 @@ namespace LedScreens.Systems
         public sealed class ScreenTemplate
         {
             public ScreenTemplate(string source, string name, string displayName, ScreenFaces faces, float insetSide, float insetTop, float insetBottom,
-                Layout layout = null, string[] legacyNames = null, bool roadSide = false)
+                Layout layout = null, string[] legacyNames = null, bool roadSide = false, bool requireMeasured = false, bool freestanding = false)
             {
                 Source = source;
                 Name = name;
@@ -41,6 +41,8 @@ namespace LedScreens.Systems
                 Layout = layout;
                 LegacyNames = legacyNames ?? Array.Empty<string>();
                 RoadSide = roadSide;
+                RequireMeasured = requireMeasured;
+                Freestanding = freestanding;
             }
 
             public string Source { get; }
@@ -55,13 +57,19 @@ namespace LedScreens.Systems
             public Layout Layout { get; }
 
             /// <summary>Round ad face (the round billboards).</summary>
-            public bool Round => Source.StartsWith("BillboardRound", StringComparison.Ordinal);
+            public bool Round => Source.StartsWith("BillboardRound", StringComparison.Ordinal) || Source.StartsWith("SignRound", StringComparison.Ordinal);
 
             /// <summary>Earlier names of this prefab; saves that use them load as this prefab.</summary>
             public string[] LegacyNames { get; }
 
             /// <summary>Can be drawn along roads like trees (Line/Curve mode with road snapping fills the road's tree spots).</summary>
             public bool RoadSide { get; }
+
+            /// <summary>Skip this prefab when the source's ad face can't be measured, instead of guessing from the mesh bounds.</summary>
+            public bool RequireMeasured { get; }
+
+            /// <summary>Stands on the ground on its own instead of snapping to walls (for a source that attaches to walls).</summary>
+            public bool Freestanding { get; }
         }
 
         /// <summary>
@@ -174,6 +182,18 @@ namespace LedScreens.Systems
             new ScreenTemplate("BillboardWallLarge01", "LedFacadeLarge2x6", "LED Facade Tower (Portrait)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 Layout.Wall(2, 6), legacyNames: new[] { "LedFacadeHuge1x3" }),
 
+            // Skyscraper screens: huge wall grids for the side of a tower, centred where you click.
+            new ScreenTemplate("BillboardWallLarge01", "LedSkyscraperTall4x12", "LED Skyscraper Screen (Tall, 34×47 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(4, 12)),
+            new ScreenTemplate("BillboardWallLarge01", "LedSkyscraperStrip2x16", "LED Skyscraper Strip (17×63 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(2, 16)),
+            new ScreenTemplate("BillboardWallLarge01", "LedSkyscraperWide8x6", "LED Skyscraper Screen (Wide, 67×24 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(8, 6)),
+            new ScreenTemplate("BillboardWallLarge01", "LedSkyscraperMega8x12", "LED Skyscraper Screen (Mega, 67×47 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(8, 12)),
+            new ScreenTemplate("BillboardWallLarge01", "LedSkyscraperBand12x2", "LED Skyscraper Crown Band (100×8 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Wall(12, 2)),
+
             // Free-standing billboards
             new ScreenTemplate("BillboardSmall01", "LedScreenSmall01", "LED Billboard (Small)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f, roadSide: true),
             new ScreenTemplate("BillboardSmall02", "LedScreenSmall02", "LED Billboard (Small 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f, roadSide: true),
@@ -257,6 +277,86 @@ namespace LedScreens.Systems
                 Layout.Cube(columns: 1, rows: 1, elevation: 9f, poles: 1, poleDiameter: 1.4f)),
             new ScreenTemplate("BillboardWallMedium01", "LedCubePoleMedium", "LED Screen Cube on Pole (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 Layout.Cube(columns: 1, rows: 2, elevation: 3f, poles: 1, poleDiameter: 0.35f), roadSide: true),
+
+            // The small rounded standing signs (vanilla "Screen" props): double-sided, also along roads.
+            // If their ad face can't be measured, the insets (fractions of the mesh bounds) leave out
+            // the stem below and the clip on top.
+            new ScreenTemplate("Screen01", "LedSignScreen01", "LED Standing Sign (Double-Sided)", ScreenFaces.Both, 0.06f, 0.1f, 0.25f,
+                freestanding: true, roadSide: true),
+            new ScreenTemplate("Screen02", "LedSignScreen02", "LED Standing Sign 2 (Double-Sided)", ScreenFaces.Both, 0.06f, 0.1f, 0.25f,
+                freestanding: true, roadSide: true),
+
+
+            // LED versions of more vanilla billboards, posters and shop signs. Each is only created
+            // when its ad face can be measured (some vanilla props have no separate ad surface).
+            new ScreenTemplate("SignRoundLarge01", "LedRoundShopSign01", "LED Round Shop Sign", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallSmall02", "LedWallSmall02", "LED Wall Screen (Small, Style 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallSmall03", "LedWallSmall03", "LED Wall Screen (Small, Style 3)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallSmall04", "LedWallSmall04", "LED Wall Screen (Small, Style 4)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallMedium02", "LedWallMedium02", "LED Wall Screen (Medium, Style 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallLarge02", "LedWallLarge02", "LED Wall Screen (Large, Style 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallLarge03", "LedWallLarge03", "LED Wall Screen (Large, Style 3)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("BillboardWallLarge04", "LedWallLarge04", "LED Wall Screen (Large, Style 4)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterSmall01", "LedPosterSmall01", "LED Poster (Small 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterSmall02", "LedPosterSmall02", "LED Poster (Small 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterMedium01", "LedPosterMedium01", "LED Poster (Medium 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterMedium02", "LedPosterMedium02", "LED Poster (Medium 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterLarge01", "LedPosterLarge01", "LED Poster (Large 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterLarge02", "LedPosterLarge02", "LED Poster (Large 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterHuge01", "LedPosterHuge01", "LED Poster (Huge 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("PosterHuge02", "LedPosterHuge02", "LED Poster (Huge 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignFrontwaySmall01", "LedShopSignSmall01", "LED Shop Sign (Small 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignFrontwaySmall02", "LedShopSignSmall02", "LED Shop Sign (Small 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignFrontwayMedium01", "LedShopSignMedium01", "LED Shop Sign (Medium 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignFrontwayMedium02", "LedShopSignMedium02", "LED Shop Sign (Medium 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignFrontwayLarge01", "LedShopSignLarge01", "LED Shop Sign (Large 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignFrontwayLarge02", "LedShopSignLarge02", "LED Shop Sign (Large 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignSidewaySmall01", "LedHangingSignSmall01", "LED Hanging Shop Sign (Small 1)", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true, legacyNames: new[] { "LedSidewaySignSmall01" }),
+            new ScreenTemplate("SignSidewaySmall02", "LedHangingSignSmall02", "LED Hanging Shop Sign (Small 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true, legacyNames: new[] { "LedSidewaySignSmall02" }),
+            new ScreenTemplate("SignSidewayMedium01", "LedHangingSignMedium01", "LED Hanging Shop Sign (Medium 1)", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true, legacyNames: new[] { "LedSidewaySignMedium01" }),
+            new ScreenTemplate("SignSidewayMedium02", "LedHangingSignMedium02", "LED Hanging Shop Sign (Medium 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true, legacyNames: new[] { "LedSidewaySignMedium02" }),
+            new ScreenTemplate("SignSidewayLarge01", "LedHangingSignLarge01", "LED Hanging Shop Sign (Large 1)", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true, legacyNames: new[] { "LedSidewaySignLarge01" }),
+            new ScreenTemplate("SignSidewayLarge02", "LedHangingSignLarge02", "LED Hanging Shop Sign (Large 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true, legacyNames: new[] { "LedSidewaySignLarge02" }),
+            new ScreenTemplate("SignNeonSmall01", "LedNeonSignSmall01", "LED Neon-Style Sign (Small 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignNeonSmall02", "LedNeonSignSmall02", "LED Neon-Style Sign (Small 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignNeonMedium01", "LedNeonSignMedium01", "LED Neon-Style Sign (Medium 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignNeonMedium02", "LedNeonSignMedium02", "LED Neon-Style Sign (Medium 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignNeonLarge01", "LedNeonSignLarge01", "LED Neon-Style Sign (Large 1)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
+            new ScreenTemplate("SignNeonLarge02", "LedNeonSignLarge02", "LED Neon-Style Sign (Large 2)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                requireMeasured: true),
         };
 
         // Clones must not inherit these: they would make the game spawn our screens on
@@ -362,6 +462,13 @@ namespace LedScreens.Systems
 
                 Mod.log.Info(AdPanelMeasurer.Describe(source));
                 bool measured = AdPanelMeasurer.TryMeasure(source, out var panel);
+                if (!measured && template.RequireMeasured)
+                {
+                    Mod.log.Info($"Skipping '{template.Name}': '{template.Source}' has no measurable ad face");
+                    continue;
+                }
+                if (template.Freestanding && template.Layout == null)
+                    clone.Remove(typeof(AttachedObject));
                 // Free-standing billboards have the ad on the front only; put a screen on their plain back too.
                 if (measured && template.Layout == null && template.Faces == ScreenFaces.Both && !template.Round &&
                     panel.m_Faces == ScreenFaces.Front && !AdPanelMeasurer.TryMeasureBack(source, ref panel))
@@ -386,6 +493,8 @@ namespace LedScreens.Systems
                     screen.m_PanelNormal = panel.m_Normal;
                     screen.m_PanelHalfDepth = panel.m_HalfDepth;
                     screen.m_PanelBackDistance = panel.m_BackDistance;
+                    // Grids are built from flat panels.
+                    screen.m_PanelCurve = template.Layout == null ? panel.m_Curve : 0f;
                     screen.m_Faces = panel.m_Faces;
                     Mod.log.Info($"{template.Name}: ad panel center {panel.m_Center} size {panel.m_Size} normal {panel.m_Normal} halfDepth {panel.m_HalfDepth:0.000} back {panel.m_BackDistance:0.000} faces {panel.m_Faces}");
                 }

@@ -53,6 +53,10 @@ namespace LedScreens
         public bool RoadSideShuffle { get; set; }
 
         [SettingsUISection(kSection, kMediaGroup)]
+        [SettingsUISlider(min = 1f, max = LedRoadSpacingSystem.kMaxSpacing, step = 1f, unit = Unit.kInteger)]
+        public int RoadSideSpacing { get; set; }
+
+        [SettingsUISection(kSection, kMediaGroup)]
         [SettingsUIButton]
         public bool ApplyToSelected
         {
@@ -133,6 +137,7 @@ namespace LedScreens
         {
             DefaultMedia = MediaLibrary.kTestPattern;
             RoadSideShuffle = true;
+            RoadSideSpacing = 1;
             Brightness = 1f;
             DrawDistance = 2500f;
             PoleStyle = PoleStyle.Auto;

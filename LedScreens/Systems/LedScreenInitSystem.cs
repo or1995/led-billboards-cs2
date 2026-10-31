@@ -13,7 +13,8 @@ namespace LedScreens.Systems
 {
     /// <summary>
     /// Gives freshly created screens their settings: a placement preview of an existing screen
-    /// (move / relocate) copies the original, a new screen gets the "media for new screens" setting.
+    /// (move / relocate) copies the original, a road-side screen the game rebuilt copies one of
+    /// the screens beside it, and a new screen gets the "media for new screens" setting.
     /// </summary>
     public partial class LedScreenInitSystem : GameSystemBase
     {
@@ -23,11 +24,13 @@ namespace LedScreens.Systems
         private EntityQuery m_CreatedQuery;
         private EntityQuery m_PlaceholderQuery;
         private SelectedInfoUISystem m_SelectedInfoUISystem;
+        private LedRoadSpacingSystem m_SpacingSystem;
 
         protected override void OnCreate()
         {
             base.OnCreate();
             m_SelectedInfoUISystem = World.GetOrCreateSystemManaged<SelectedInfoUISystem>();
+            m_SpacingSystem = World.GetOrCreateSystemManaged<LedRoadSpacingSystem>();
             m_CreatedQuery = GetEntityQuery(
                 ComponentType.ReadWrite<LedScreen>(),
                 ComponentType.ReadOnly<Created>(),
@@ -61,6 +64,11 @@ namespace LedScreens.Systems
                     if ((screen.m_Flags & LedScreenFlags.Initialized) != 0)
                         continue;
 
+                    Owner owner = default;
+                    bool roadSide = EntityManager.HasComponent<Secondary>(entity) && EntityManager.TryGetComponent(entity, out owner);
+                    if (roadSide && !EntityManager.HasComponent<Temp>(entity))
+                        m_SpacingSystem.Thin(owner.m_Owner);
+
                     if (EntityManager.TryGetComponent<Temp>(entity, out var temp) &&
                         temp.m_Original != Entity.Null &&
                         EntityManager.TryGetComponent<LedScreen>(temp.m_Original, out var original) &&
@@ -69,9 +77,19 @@ namespace LedScreens.Systems
                         screen = original;
                         CopyPlaylist(temp.m_Original, entity);
                     }
+                    else if (roadSide && TryFindNeighbour(owner.m_Owner, out Entity neighbour, out var neighbourScreen))
+                    {
+                        // The game rebuilt this road's objects: keep the street's settings.
+                        screen = neighbourScreen;
+                        if (screen.m_TimeOffset != 0f)
+                            screen.m_TimeOffset = UnityEngine.Random.Range(0f, 600f);
+                        CopyPlaylist(neighbour, entity);
+                    }
                     else
                     {
                         screen = LedScreen.Create(Mod.Settings?.DefaultMedia);
+                        if (roadSide)
+                            screen.m_Spacing = Mod.Settings?.RoadSideSpacing ?? 1;
                         // Screens in a road's tree spots can't easily be picked one by one, so
                         // give each its own shuffle so a street doesn't show the same ad everywhere.
                         if (EntityManager.HasComponent<Secondary>(entity) && (Mod.Settings?.RoadSideShuffle ?? true))
@@ -87,7 +105,28 @@ namespace LedScreens.Systems
             }
         }
 
-        /// <summary>Gives a move preview the same playlist as the screen being moved.</summary>
+        /// <summary>Finds a set-up screen on the same road segment that isn't new itself.</summary>
+        private bool TryFindNeighbour(Entity road, out Entity neighbour, out LedScreen screen)
+        {
+            neighbour = Entity.Null;
+            screen = default;
+            if (!EntityManager.TryGetBuffer(road, isReadOnly: true, out DynamicBuffer<SubObject> subObjects))
+                return false;
+            for (int i = 0; i < subObjects.Length; i++)
+            {
+                Entity entity = subObjects[i].m_SubObject;
+                if (EntityManager.TryGetComponent(entity, out screen) && (screen.m_Flags & LedScreenFlags.Initialized) != 0 &&
+                    !EntityManager.HasComponent<Created>(entity) && !EntityManager.HasComponent<Deleted>(entity) &&
+                    !EntityManager.HasComponent<Temp>(entity))
+                {
+                    neighbour = entity;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Gives a new screen the same playlist as another (a moved screen, or a road-side neighbour).</summary>
         private void CopyPlaylist(Entity from, Entity to)
         {
             if (!EntityManager.TryGetBuffer(from, isReadOnly: true, out DynamicBuffer<LedPlaylistItem> source) || source.Length == 0)
