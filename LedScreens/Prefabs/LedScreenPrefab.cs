@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Colossal.Entities;
 using Game.Prefabs;
 using LedScreens.Components;
 using Unity.Entities;
@@ -21,6 +22,9 @@ namespace LedScreens.Prefabs
 
         public float m_PanelHalfDepth;
 
+        /// <summary>When over 0, the back screen sits this far behind the panel centre (on the board's own back).</summary>
+        public float m_PanelBackDistance;
+
         public float m_InsetSide = 0.03f;
 
         public float m_InsetTop = 0.03f;
@@ -30,6 +34,9 @@ namespace LedScreens.Prefabs
         public float m_SurfaceOffset = 0.02f;
 
         public bool m_Round;
+
+        /// <summary>Can replace road-side trees, so it can be drawn along roads like trees.</summary>
+        public bool m_RoadSide;
 
         public override void GetPrefabComponents(HashSet<ComponentType> components)
         {
@@ -53,12 +60,26 @@ namespace LedScreens.Prefabs
                 m_PanelSize = m_PanelSize,
                 m_PanelNormal = m_PanelNormal,
                 m_PanelHalfDepth = m_PanelHalfDepth,
+                m_PanelBackDistance = m_PanelBackDistance,
                 m_InsetSide = m_InsetSide,
                 m_InsetTop = m_InsetTop,
                 m_InsetBottom = m_InsetBottom,
                 m_SurfaceOffset = m_SurfaceOffset,
                 m_Round = m_Round,
             });
+        }
+
+        public override void LateInitialize(EntityManager entityManager, Entity entity)
+        {
+            base.LateInitialize(entityManager, entity);
+            // Same as vanilla trees (TreeObject): the object tool then offers road snapping in
+            // Line/Curve mode and fills the road's tree spots with this prefab.
+            if (m_RoadSide && entityManager.TryGetComponent<PlaceableObjectData>(entity, out var placeable) &&
+                (placeable.m_Flags & (Game.Objects.PlacementFlags.RoadNode | Game.Objects.PlacementFlags.RoadEdge)) == 0)
+            {
+                placeable.m_SubReplacementType = Game.Net.SubReplacementType.Tree;
+                entityManager.SetComponentData(entity, placeable);
+            }
         }
     }
 }

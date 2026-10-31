@@ -25,6 +25,7 @@ namespace LedScreens.Systems
         private LedScreen m_Screen;
         private readonly System.Collections.Generic.List<string> m_PlaylistItems = new System.Collections.Generic.List<string>();
         private string m_NowPlaying;
+        private int m_MediaVersion;
 
         protected override string group => nameof(LedScreenSection);
 
@@ -36,6 +37,7 @@ namespace LedScreens.Systems
             AddBinding(new TriggerBinding<string>(kGroup, "setMedia", SetMedia));
             AddBinding(new TriggerBinding<float>(kGroup, "setSpeed", value => Modify((ref LedScreen s) => s.m_Speed = Mathf.Clamp(value, kMinSpeed, kMaxSpeed))));
             AddBinding(new TriggerBinding<float>(kGroup, "setBrightness", value => Modify((ref LedScreen s) => s.m_Brightness = Mathf.Clamp(value, kMinBrightness, kMaxBrightness))));
+            AddBinding(new TriggerBinding<int>(kGroup, "setEffect", value => Modify((ref LedScreen s) => s.m_Effect = (ScreenEffect)Mathf.Clamp(value, 0, 3))));
             AddBinding(new TriggerBinding(kGroup, "syncStart", () => Modify((ref LedScreen s) => s.m_TimeOffset = 0f)));
             AddBinding(new TriggerBinding(kGroup, "randomStart", () => Modify((ref LedScreen s) => s.m_TimeOffset = UnityEngine.Random.Range(0f, 600f))));
             AddBinding(new TriggerBinding(kGroup, "useForNewScreens", UseForNewScreens));
@@ -75,6 +77,12 @@ namespace LedScreens.Systems
         protected override void OnPreUpdate()
         {
             base.OnPreUpdate();
+            // Files added to or removed from the media folder: refresh the lists.
+            if (visible && m_MediaVersion != MediaLibrary.Instance.Version)
+            {
+                m_MediaVersion = MediaLibrary.Instance.Version;
+                m_InfoUISystem.RequestUpdate();
+            }
             // While a playlist runs, refresh the panel so "Now playing" follows the screen.
             if (visible && m_Screen.m_Playlist != PlaylistMode.Off && EntityManager.Exists(selectedEntity) &&
                 EntityManager.TryGetComponent<LedScreen>(selectedEntity, out var screen))
@@ -112,6 +120,10 @@ namespace LedScreens.Systems
             writer.Write(m_Screen.m_Speed);
             writer.PropertyName("brightness");
             writer.Write(m_Screen.m_Brightness);
+            writer.PropertyName("effect");
+            writer.Write((int)m_Screen.m_Effect);
+            writer.PropertyName("defaultEffect");
+            writer.Write((int)(Mod.Settings?.LedEffect ?? LedEffectMode.Off));
             writer.PropertyName("synced");
             writer.Write(m_Screen.m_TimeOffset == 0f);
             writer.PropertyName("isDefault");

@@ -33,6 +33,9 @@ namespace LedScreens.Components
 
         public float m_PanelHalfDepth;
 
+        /// <summary>When over 0, the back face sits this far behind the panel centre instead of at m_PanelHalfDepth.</summary>
+        public float m_PanelBackDistance;
+
         public float m_InsetSide;
 
         public float m_InsetTop;

@@ -14,6 +14,14 @@ namespace LedScreens.Media
 
         /// <summary>Show with sharp (nearest) filtering, for the pixelated LED effect.</summary>
         public bool PointFilter;
+
+        /// <summary>
+        /// Set by <see cref="TextureEncoder"/>: each frame's full mip chain in <see cref="Format"/>,
+        /// ready for Texture2D.LoadRawTextureData. <see cref="Frames"/> is emptied then.
+        /// </summary>
+        public readonly List<byte[]> Raw = new List<byte[]>();
+        public TextureFormat Format;
+        public int MipCount;
     }
 
     /// <summary>
@@ -224,7 +232,7 @@ namespace LedScreens.Media
         /// <summary>Box-filter resample to the output size; flips rows (Unity textures are bottom-up) and drops alpha (transparent = black).</summary>
         private static Color32[] Resample(Color32[] canvas, int width, int height, int outWidth, int outHeight)
         {
-            var result = new Color32[outWidth * outHeight];
+            var result = BufferPool<Color32>.Rent(outWidth * outHeight); // every pixel is written below
             for (int oy = 0; oy < outHeight; oy++)
             {
                 int y0 = oy * height / outHeight;

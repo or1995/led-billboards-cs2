@@ -6,7 +6,7 @@
 2. Press **Open media folder**. It opens:
    `%USERPROFILE%\AppData\LocalLow\Colossal Order\Cities Skylines II\ModsData\LedScreens\Media`
 3. Copy your files into it. Subfolders are fine.
-4. Press **Reload media**. In game you can also press **Reload** in any screen's info panel.
+4. That's it: new, changed and deleted files are picked up automatically within a few seconds, even in game. **Reload media** (or **Reload** in a screen's info panel) reloads everything, e.g. after changing quality settings.
 
 | Type | Formats | Notes |
 |---|---|---|
@@ -32,18 +32,35 @@ Open **Landscaping → LED Screens** and pick a prop:
 | LED Ticker Strip (Short / Long) | Long, thin strips for news tickers and shop fronts |
 | LED Video Wall (2×1 / 2×2 / 3×2) | Big wall screens made of several large panels |
 | LED Facade Screen (3×3 / 5×3 / 6×5), LED Facade Tower (Portrait) | Building-sized screens, up to about 50 × 20 m |
-| LED Billboard (Small / Small 2 / Medium / Large / Huge) | Free-standing billboards on legs |
+| LED Billboard (Small / Small 2 / Medium / Large / Huge) | Free-standing billboards on legs, with a screen on both sides |
 | LED Street Totem (single or double-sided) | A tall street-level screen on a short pole |
-| LED Roadside Screen (Large / Huge) | Low screens on poles, for roadsides and car parks |
+| LED Roadside Screen (Large / Huge / Large Double-Sided) | Low screens on poles, for roadsides and car parks |
+| LED Lamp-Post Banner, LED City Light Poster, LED Sidewalk Sign, LED Street Ticker | Double-sided street furniture for sidewalks |
 | LED High-Pole Screen (Medium / Large / Huge) | A single panel raised on pole(s) |
 | LED High-Pole Screen (Extra Wide / Giant / Mega / Ribbon / Portrait) | Several panels showing one big image, up to about 42 × 12 m |
 | LED High-Pole Screen (…, Double-Sided) | Two screens back to back, showing the same media on both sides |
 | LED Round Billboard (Small / Medium / Large) | Round wall screens |
-| LED Round Sign on Pole (Medium / Large) | Double-sided round signs on a pole |
+| LED Round Sign on Pole (Small / Medium / Large) | Double-sided round signs on a pole |
 
 Each prop has its own icon in the toolbar showing its shape.
 
 New screens play whatever is set as **Media** in *Options → LED Screens*, or the media you last marked with **Use for new screens**.
+
+### Along roads, like trees
+
+Some street-level screens can be drawn along a road the way trees are:
+- LED Billboard (Small / Small 2)
+- LED Street Totem (both)
+- LED Roadside Screen (Large, single or double-sided)
+- LED Lamp-Post Banner, LED City Light Poster, LED Sidewalk Sign, LED Street Ticker
+- LED High-Pole Screen (Medium, single or double-sided) and (Large, Double-Sided)
+- LED Round Sign on Pole (all)
+
+1. Pick the screen, then switch the tool to **Line** or **Curve** mode.
+2. Make sure road snapping is on.
+3. Drag along a road with sidewalks.
+
+The screens fill the road's tree spots, facing along the road. Double-sided screens are best here. Each one shuffles through all your media in its own order, switching every 30 seconds (change it per screen in the info panel). To have them play the **Media** setting instead, turn off *Road-side screens shuffle all media* in the options.
 
 ## 3. Change what a screen shows
 
@@ -54,6 +71,7 @@ New screens play whatever is set as **Media** in *Options → LED Screens*, or t
 | **Media** | Choose the file this screen shows. Hidden while a playlist is on. |
 | **Playlist: Off / In order / Shuffle** | Turn on a playlist for this screen (see below). |
 | **Speed** | 0.1× to 4× playback speed for GIFs. Videos always play at normal speed. |
+| **LED effect** | *Default* follows the mod setting. *Smooth*, *Pixelated* or *LED dots* override it for this screen only. |
 | **Brightness** | 0–300% for this screen, on top of the global brightness. |
 | **Sync / Random start** | *Sync* keeps screens showing the same GIF in step. *Random start* offsets this one so neighbouring screens differ. |
 | **Use for new screens** | New screens you place will show this media. |
@@ -82,13 +100,15 @@ Changes apply immediately and are saved with the city.
 |---|---|
 | **Media** | What new screens show. |
 | **Apply to selected screen** | Older way to set a selected screen's media; the info panel is easier. |
-| **Open media folder / Reload media** | Manage your files. |
+| **Road-side screens shuffle all media** | Screens drawn along a road each shuffle through all your media. Off: they play the *Media* above. |
+| **Open media folder / Reload media** | Manage your files. New files are picked up automatically; *Reload media* reloads everything. |
 | **Brightness** | Global brightness for all screens. |
 | **Draw distance** | Screens farther than this aren't drawn. |
-| **LED pixel effect** | *Off*: smooth image. *Pixelated*: sharp square pixels. *LED dots*: each pixel is a round glowing dot with dark gaps, like a real LED screen up close, blending into a smooth image from a distance. Media reloads automatically when you change it. |
+| **Default LED effect** | *Off*: smooth image. *Pixelated*: sharp square pixels. *LED dots*: each pixel is a round glowing dot with dark gaps, like a real LED screen up close, blending into a smooth image from a distance. Used by every screen whose LED effect is *Default*; each screen can pick its own in the info panel. |
 | **LED resolution** | How many LEDs across the media's width (32–320). Lower means bigger, chunkier pixels. LED dots use about 4× more video memory per GIF than *Off* at the same resolution. |
 | **Pole style** | *Auto*: steel poles for medium/large, concrete columns for huge and bigger. *Steel* or *Concrete* forces one style. **Needs a game restart.** |
 | **Max GIF resolution / Max frames per GIF** | Limit memory use. Press *Reload media* after changing. |
+| **Cache converted GIFs on disk** | Off by default. Saves converted GIFs so playlists reload them from disk instead of converting them again: less CPU work, more disk space (up to the *Cache size limit*, default 4 GB). *Clear cache* empties it. |
 | **Compress textures** | Uses about 4× less video memory at a small quality cost. |
 | **Screen alignment (debug)** | Adjust which side the image is drawn on, how far it sits in front of the panel, and the border. Only needed if an image looks misplaced. |
 

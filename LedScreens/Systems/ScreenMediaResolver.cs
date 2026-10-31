@@ -31,6 +31,18 @@ namespace LedScreens.Systems
             return name;
         }
 
+        /// <summary>The LED effect this screen uses: its own choice, or the global setting.</summary>
+        public static LedEffectMode Effect(in LedScreen screen)
+        {
+            switch (screen.m_Effect)
+            {
+                case ScreenEffect.Off: return LedEffectMode.Off;
+                case ScreenEffect.Pixelated: return LedEffectMode.Pixelated;
+                case ScreenEffect.LedDots: return LedEffectMode.LedDots;
+                default: return Mod.Settings?.LedEffect ?? LedEffectMode.Off;
+            }
+        }
+
         /// <summary>
         /// Returns the media showing at <paramref name="time"/>. When a playlist is on, also gives
         /// the next item and how long until it starts (so it can be loaded in advance).

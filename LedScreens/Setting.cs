@@ -46,7 +46,11 @@ namespace LedScreens
 
         [SettingsUISection(kSection, kMediaGroup)]
         [SettingsUIDropdown(typeof(Setting), nameof(GetMediaItems))]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetMediaItemsVersion))]
         public string DefaultMedia { get; set; }
+
+        [SettingsUISection(kSection, kMediaGroup)]
+        public bool RoadSideShuffle { get; set; }
 
         [SettingsUISection(kSection, kMediaGroup)]
         [SettingsUIButton]
@@ -82,7 +86,6 @@ namespace LedScreens
 
         [SettingsUISection(kSection, kDisplayGroup)]
         [SettingsUISlider(min = 32f, max = 320f, step = 16f, unit = Unit.kInteger)]
-        [SettingsUIHideByCondition(typeof(Setting), nameof(IsLedEffectOff))]
         public int LedResolution { get; set; }
 
         [SettingsUISection(kSection, kDisplayGroup)]
@@ -99,6 +102,22 @@ namespace LedScreens
         [SettingsUISection(kSection, kQualityGroup)]
         public bool CompressTextures { get; set; }
 
+        [SettingsUISection(kSection, kQualityGroup)]
+        public bool CacheConvertedMedia { get; set; }
+
+        [SettingsUISection(kSection, kQualityGroup)]
+        [SettingsUISlider(min = 1f, max = 32f, step = 1f, unit = Unit.kInteger)]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(IsCacheOff))]
+        public int CacheSizeLimitGB { get; set; }
+
+        [SettingsUISection(kSection, kQualityGroup)]
+        [SettingsUIButton]
+        [SettingsUIConfirmation]
+        public bool ClearCache
+        {
+            set => System.Threading.Tasks.Task.Run(MediaCache.Clear);
+        }
+
         [SettingsUISection(kSection, kDebugGroup)]
         public ScreenFacesOverride FacesOverride { get; set; }
 
@@ -113,6 +132,7 @@ namespace LedScreens
         public override void SetDefaults()
         {
             DefaultMedia = MediaLibrary.kTestPattern;
+            RoadSideShuffle = true;
             Brightness = 1f;
             DrawDistance = 2500f;
             PoleStyle = PoleStyle.Auto;
@@ -121,12 +141,17 @@ namespace LedScreens
             MaxTextureSize = 512;
             MaxFrames = 300;
             CompressTextures = true;
+            CacheConvertedMedia = false;
+            CacheSizeLimitGB = 4;
             FacesOverride = ScreenFacesOverride.Auto;
             SurfaceOffset = 0f;
             ExtraInset = 0f;
         }
 
-        public bool IsLedEffectOff() => LedEffect == LedEffectMode.Off;
+        public bool IsCacheOff() => !CacheConvertedMedia;
+
+        /// <summary>Changes when the media list does, so the dropdown above picks up new files.</summary>
+        public int GetMediaItemsVersion() => MediaLibrary.Instance.Version;
 
         public DropdownItem<string>[] GetMediaItems()
         {

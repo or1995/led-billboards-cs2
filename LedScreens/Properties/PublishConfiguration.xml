@@ -2,7 +2,7 @@
 	<!--Id must be set in order to update existed mod. it is not required for publishing mod for the first time-->
 	<ModId Value="165337" />
 	<!--Name of the mod to display to players-->
-	<DisplayName Value="LED Billboards (WIP)" />
+	<DisplayName Value="Animated LED Billboards (WIP)" />
 	<!--Short description of the mod-->
 	<ShortDescription Value="[WIP / EXPERIMENTAL] Placeable animated LED screens and billboards that play your own GIFs, images and videos. Back up your saves!" />
 	<!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
@@ -23,16 +23,18 @@ Please report problems on GitHub (link below) with a screenshot and your `Logs/L
 
 Adds placeable **animated LED screens and digital billboards**. Every screen plays your own media, and each one can show something different.
 
-- **About 40 screens, each with its own icon:** wall screens, posters, ticker strips, **video walls and building facades** (up to about 50 × 20 m), free-standing billboards, street totems, roadside screens, **high-pole screens** (up to *Mega* and *Ribbon*, plus portrait and **double-sided** versions) and round signs
+- **About 47 screens, each with its own icon:** wall screens, posters, ticker strips, **video walls and building facades** (up to about 50 × 20 m), free-standing billboards, street totems, roadside screens, **high-pole screens** (up to *Mega* and *Ribbon*, plus portrait and **double-sided** versions) and round signs
 - **Media:** animated **GIF**, **PNG/JPG** images and **videos** (MP4, WebM, MOV and more)
-- **Per-screen controls** in the info panel: media, speed, brightness, sync / random start
+- **Per-screen controls** in the info panel: media, speed, brightness, LED effect, sync / random start
 - **Playlists:** cycle through several files **in order** or **shuffled**
-- **Optional LED look:** *Pixelated* or *LED dots* effect
+- **Along roads like trees:** street-level screens can be drawn along a road in Line/Curve mode, filling its tree spots; each one shuffles your media
+- **Optional LED look:** *Pixelated* or *LED dots* effect, for all screens or per screen
+- **Live media folder:** new and changed files show up in game within seconds
 - **Self-lit:** screens keep the same brightness day and night
 
 ## How to use
 
-1. **Add your media:** Options → LED Screens → **Open media folder**, then drop in your `.gif`, `.png`, `.jpg` or video files and press **Reload media**.
+1. **Add your media:** Options → LED Screens → **Open media folder**, then drop in your `.gif`, `.png`, `.jpg` or video files. They show up in game within a few seconds.
 2. **Place a screen:** in your city, open **Landscaping → LED Screens** and place one.
 3. **Pick what it shows:** **click the screen**. Its info panel has an **LED Screen** section where you choose the media or set up a playlist.
 
@@ -54,16 +56,20 @@ https://github.com/or1995/led-billboards-cs2
 	<!--Tag, can be set multiple times-->
 	<Tag Value="Code Mod" />
 	<!--Version of the mod-->
-	<ModVersion Value="0.3.0" />
+	<ModVersion Value="0.4.0" />
 	<!--Recommended version of the base game to use the mod-->
 	<GameVersion Value="1.6.*" />
 	<!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
 	<ChangeLog>
-0.3.0 (work in progress, experimental: back up your saves)
-- 22 new screens: video walls, building facades, ticker strips, posters, portrait screens, street totems, roadside screens, portrait / Mega / double-sided high-pole screens and double-sided round signs on poles
-- Every screen has its own toolbar icon
-- Round billboards: the image is now a circle cropped to fit, instead of a square spilling past the rim
-- High-Pole Giant no longer has a walkway across the middle of the screen
+0.4.0 (work in progress, experimental: back up your saves)
+- Screens along roads: 16 street-level screens can be drawn along a road like trees (Line/Curve mode); they shuffle all your media every 30 s
+- 7 new double-sided street screens: lamp-post banner, city light poster, sidewalk sign, street ticker, large roadside screen, medium high-pole screen and small round sign on a pole
+- Free-standing billboards now show the screen on both sides
+- LED effect per screen (Default / Smooth / Pixelated / LED dots) in the info panel
+- New and changed media files are picked up automatically, no restart or reload needed
+- Much faster GIF loading and fewer frame drops: conversion runs in the background, buffers are reused, and only screens you can see load media
+- Optional disk cache of converted GIFs (Options → Quality)
+- The "Screen sides" debug option resets to Auto on restart
 - Existing screens in your saves are kept
 	</ChangeLog>
 	<!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdfunding, generic-->

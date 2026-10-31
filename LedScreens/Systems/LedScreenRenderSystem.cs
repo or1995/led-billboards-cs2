@@ -35,6 +35,13 @@ namespace LedScreens.Systems
     {
         private const float kPreloadSeconds = 4f;
 
+        // Faces smaller than this on screen are skipped: the vanilla panel underneath looks the same.
+        private const float kMinPixels = 1f;
+
+        // Screens out of view check their media every this many frames (staggered): media that is
+        // already loaded stays loaded, but they don't start loads nobody would see.
+        private const int kHiddenRefreshFrames = 30;
+
         private static readonly int kUnlitColorMap = Shader.PropertyToID("_UnlitColorMap");
         private static readonly int kUnlitColor = Shader.PropertyToID("_UnlitColor");
         private static readonly int kUnlitColorMapST = Shader.PropertyToID("_UnlitColorMap_ST");
@@ -94,6 +101,15 @@ namespace LedScreens.Systems
         private MaterialPropertyBlock m_Properties;
         private int m_SurfaceSettingsHash;
         private bool m_LoggedFirstDraw;
+        private int m_Frame;
+
+        /// <summary>A face that passed culling, in world space.</summary>
+        private struct VisibleFace
+        {
+            public float3 m_Center;
+            public quaternion m_Rotation;
+            public Bounds m_Bounds;
+        }
 
         protected override void OnCreate()
         {
@@ -160,6 +176,9 @@ namespace LedScreens.Systems
 
             GeometryUtility.CalculateFrustumPlanes(camera, m_FrustumPlanes);
             float3 cameraPosition = camera.transform.position;
+            // Pixels per metre at 1 m distance, for skipping faces too small to see.
+            float pixelScale = camera.pixelHeight / (2f * math.tan(math.radians(camera.fieldOfView) * 0.5f));
+            m_Frame = unchecked(m_Frame + 1);
             float maxDistanceSq = settings.DrawDistance * settings.DrawDistance;
             double time = ScreenMediaResolver.Clock;
             var resolver = ScreenMediaResolver.Instance;
@@ -179,13 +198,29 @@ namespace LedScreens.Systems
                     if (!surface.m_Valid)
                         continue;
 
+                    VisibleFace frontFace = default, backFace = default;
+                    bool front = (surface.m_Faces & ScreenFaces.Front) != 0 &&
+                        TryCullFace(transform, surface.m_FrontCenter, surface.m_FrontRotation, surface.m_Size, cameraPosition, pixelScale, out frontFace);
+                    bool back = (surface.m_Faces & ScreenFaces.Back) != 0 &&
+                        TryCullFace(transform, surface.m_BackCenter, surface.m_BackRotation, surface.m_Size, cameraPosition, pixelScale, out backFace);
+                    if (!front && !back && unchecked((uint)(entities[i].Index + m_Frame)) % kHiddenRefreshFrames != 0)
+                        continue;
+
                     var screen = screens[i];
+                    if (!front && !back)
+                    {
+                        if ((screen.m_Flags & LedScreenFlags.Initialized) != 0)
+                            library.Touch(resolver.Resolve(EntityManager, entities[i], screen, time, out _, out _), ScreenMediaResolver.Effect(screen), now);
+                        continue;
+                    }
+
                     Texture texture = null;
                     float mediaBrightness = 1f;
                     if ((screen.m_Flags & LedScreenFlags.Initialized) != 0)
                     {
                         string media = resolver.Resolve(EntityManager, entities[i], screen, time, out string next, out float timeToNext);
-                        var clip = library.GetClip(media, now);
+                        var effect = ScreenMediaResolver.Effect(screen);
+                        var clip = library.GetClip(media, effect, now);
                         if (clip != null)
                         {
                             texture = clip.GetFrame(time * screen.m_Speed + screen.m_TimeOffset);
@@ -193,38 +228,51 @@ namespace LedScreens.Systems
                         }
                         // Start loading the next playlist item early so the switch has no gap.
                         if (next != null && timeToNext < kPreloadSeconds)
-                            library.GetClip(next, now);
+                            library.GetClip(next, effect, now);
                     }
                     if (texture == null)
                         texture = library.NoSignal;
 
                     int brightness = (int)math.round(screen.m_Brightness * settings.Brightness * mediaBrightness * 100f);
 
-                    if ((surface.m_Faces & ScreenFaces.Front) != 0)
-                        AddFace(transform, surface.m_FrontCenter, surface.m_FrontRotation, surface.m_Size, surface.m_Round, cameraPosition, texture, brightness);
-                    if ((surface.m_Faces & ScreenFaces.Back) != 0)
-                        AddFace(transform, surface.m_BackCenter, surface.m_BackRotation, surface.m_Size, surface.m_Round, cameraPosition, texture, brightness);
+                    if (front)
+                        AddFace(frontFace, surface.m_Size, surface.m_Round, texture, brightness);
+                    if (back)
+                        AddFace(backFace, surface.m_Size, surface.m_Round, texture, brightness);
                 }
             }
 
             DrawBatches(camera);
         }
 
-        private void AddFace(Transform transform, float3 localCenter, quaternion localRotation, float2 size, bool round, float3 cameraPosition, Texture texture, int brightness)
+        /// <summary>World placement of a face, or false when it faces away, is too small to see or is off screen.</summary>
+        private bool TryCullFace(Transform transform, float3 localCenter, quaternion localRotation, float2 size, float3 cameraPosition, float pixelScale, out VisibleFace face)
         {
+            face = default;
             float3 center = transform.m_Position + math.mul(transform.m_Rotation, localCenter);
             quaternion rotation = math.mul(transform.m_Rotation, localRotation);
 
             // The quad is visible from its local -Z side; skip faces turned away from the camera.
+            float3 toCamera = cameraPosition - center;
             float3 normal = math.mul(rotation, new float3(0f, 0f, -1f));
-            if (math.dot(normal, cameraPosition - center) <= 0f)
-                return;
+            if (math.dot(normal, toCamera) <= 0f)
+                return false;
 
             float extent = math.max(size.x, size.y);
+            if (extent * pixelScale < kMinPixels * math.length(toCamera))
+                return false;
+
             var bounds = new Bounds(center, new Vector3(extent, extent, extent));
             if (!GeometryUtility.TestPlanesAABB(m_FrustumPlanes, bounds))
-                return;
+                return false;
 
+            face = new VisibleFace { m_Center = center, m_Rotation = rotation, m_Bounds = bounds };
+            return true;
+        }
+
+        private void AddFace(in VisibleFace face, float2 size, bool round, Texture texture, int brightness)
+        {
+            var bounds = face.m_Bounds;
             var key = new BatchKey(texture, brightness, round);
             if (!m_Batches.TryGetValue(key, out var batch))
             {
@@ -237,7 +285,7 @@ namespace LedScreens.Systems
                 batch.Bounds.Encapsulate(bounds);
             }
 
-            batch.Matrices.Add(Matrix4x4.TRS(center, rotation, new Vector3(size.x, size.y, 1f)));
+            batch.Matrices.Add(Matrix4x4.TRS(face.m_Center, face.m_Rotation, new Vector3(size.x, size.y, 1f)));
         }
 
         private void DrawBatches(Camera camera)
@@ -299,12 +347,14 @@ namespace LedScreens.Systems
 
             float3 normal, faceCenter;
             float width, height, halfDepth;
+            float backDistance = 0f;
             if (data.m_HasPanel)
             {
                 // Measured ad panel: exact, only the debug border applies.
                 normal = data.m_PanelNormal;
                 faceCenter = data.m_PanelCenter;
                 halfDepth = data.m_PanelHalfDepth;
+                backDistance = data.m_PanelBackDistance;
                 width = data.m_PanelSize.x * (1f - 2f * settings.ExtraInset);
                 height = data.m_PanelSize.y * (1f - 2f * settings.ExtraInset);
             }
@@ -335,7 +385,10 @@ namespace LedScreens.Systems
             if (width <= 0.01f || height <= 0.01f)
                 return default;
 
-            float distance = halfDepth + data.m_SurfaceOffset + settings.SurfaceOffset;
+            float offset = data.m_SurfaceOffset + settings.SurfaceOffset;
+            float distance = halfDepth + offset;
+            // Boards with the ad on the front only get their back screen on the board's own back.
+            float backDistanceTotal = (backDistance > 0f ? backDistance : halfDepth) + offset;
             float3 up = new float3(0f, 1f, 0f);
 
             var faces = data.m_Faces;
@@ -353,7 +406,7 @@ namespace LedScreens.Systems
                 m_Round = data.m_Round,
                 m_Size = new float2(width, height),
                 m_FrontCenter = faceCenter + normal * distance,
-                m_BackCenter = faceCenter - normal * distance,
+                m_BackCenter = faceCenter - normal * backDistanceTotal,
                 // The quad's visible side is its local -Z, so it looks along -normal to face +normal.
                 m_FrontRotation = quaternion.LookRotation(-normal, up),
                 m_BackRotation = quaternion.LookRotation(normal, up),

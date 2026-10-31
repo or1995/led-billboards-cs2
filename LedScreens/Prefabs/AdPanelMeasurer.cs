@@ -21,6 +21,9 @@ namespace LedScreens.Prefabs
             public float3 m_Normal;
             public float m_HalfDepth;
             public ScreenFaces m_Faces;
+
+            /// <summary>When over 0: distance from the centre back to the board's own back surface, where the back screen goes.</summary>
+            public float m_BackDistance;
         }
 
         public static bool TryMeasure(PrefabBase prefab, out Panel panel)
@@ -61,6 +64,111 @@ namespace LedScreens.Prefabs
             }
 
             return corners.Count >= 3 && TryBuildPanel(corners, normals, out panel);
+        }
+
+        /// <summary>
+        /// For boards whose ad is on the front only: finds the flat back of the board behind the
+        /// ad, so a screen can go there too. That is the outermost back-facing surface that covers a
+        /// good part of the ad's outline; surfaces closer in (like the back of the ad plate itself)
+        /// are inside the board, and small ones further out are struts.
+        /// </summary>
+        public static bool TryMeasureBack(PrefabBase prefab, ref Panel panel)
+        {
+            if (!(prefab is ObjectGeometryPrefab geometryPrefab) || geometryPrefab.m_Meshes == null)
+                return false;
+
+            const float kBin = 0.02f;
+            const float kMaxDepth = 3f;
+            float3 up = new float3(0f, 1f, 0f);
+            float3 right = math.normalize(math.cross(up, panel.m_Normal));
+            var areaByBin = new Dictionary<int, float>();
+            var depthByBin = new Dictionary<int, float>();
+
+            foreach (var meshInfo in geometryPrefab.m_Meshes)
+            {
+                if (!(meshInfo.m_Mesh is RenderPrefab render) || !render.hasGeometryAsset)
+                    continue;
+
+                int adsMaterial = FindAdsMaterial(render);
+                Mesh[] meshes = render.ObtainMeshes();
+                try
+                {
+                    if (meshes == null)
+                        continue;
+                    int material = 0;
+                    foreach (var mesh in meshes)
+                    {
+                        if (!mesh.isReadable)
+                        {
+                            material += mesh.subMeshCount;
+                            continue;
+                        }
+                        Vector3[] vertices = mesh.vertices;
+                        for (int subMesh = 0; subMesh < mesh.subMeshCount; subMesh++, material++)
+                        {
+                            if (material == adsMaterial)
+                                continue;
+                            int[] triangles = mesh.GetTriangles(subMesh);
+                            for (int t = 0; t + 2 < triangles.Length; t += 3)
+                            {
+                                float3 a = meshInfo.m_Position + math.mul(meshInfo.m_Rotation, (float3)vertices[triangles[t]]);
+                                float3 b = meshInfo.m_Position + math.mul(meshInfo.m_Rotation, (float3)vertices[triangles[t + 1]]);
+                                float3 c = meshInfo.m_Position + math.mul(meshInfo.m_Rotation, (float3)vertices[triangles[t + 2]]);
+                                float3 cross = math.cross(b - a, c - a);
+                                float area = math.length(cross) * 0.5f;
+                                if (area < 1e-6f || math.dot(cross / (area * 2f), panel.m_Normal) > -0.9f)
+                                    continue;
+
+                                float3 local = (a + b + c) / 3f - panel.m_Center;
+                                float depth = -math.dot(local, panel.m_Normal);
+                                if (depth < 0f || depth > kMaxDepth ||
+                                    math.abs(math.dot(local, right)) > panel.m_Size.x * 0.45f || math.abs(local.y) > panel.m_Size.y * 0.45f)
+                                    continue;
+
+                                int bin = (int)math.round(depth / kBin);
+                                areaByBin.TryGetValue(bin, out float binArea);
+                                depthByBin.TryGetValue(bin, out float binDepth);
+                                areaByBin[bin] = binArea + area;
+                                depthByBin[bin] = binDepth + depth * area;
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    render.ReleaseMeshes();
+                }
+            }
+
+            // Neighbouring bins count together, so a surface split across a bin edge still qualifies.
+            float minArea = 0.3f * panel.m_Size.x * panel.m_Size.y;
+            int best = int.MinValue;
+            float bestArea = 0f, bestDepth = 0f;
+            foreach (int bin in areaByBin.Keys)
+            {
+                float area = 0f, depth = 0f;
+                for (int b = bin - 1; b <= bin + 1; b++)
+                {
+                    if (areaByBin.TryGetValue(b, out float binArea))
+                    {
+                        area += binArea;
+                        depth += depthByBin[b];
+                    }
+                }
+                if (area >= minArea && bin > best)
+                {
+                    best = bin;
+                    bestArea = area;
+                    bestDepth = depth;
+                }
+            }
+            if (best == int.MinValue)
+                return false;
+
+            // Weighted depth of the surface, but never in front of its outermost bin's triangles.
+            panel.m_BackDistance = math.max(math.max(bestDepth / bestArea, depthByBin[best] / areaByBin[best]), 0.001f);
+            panel.m_Faces = ScreenFaces.Both;
+            return true;
         }
 
         /// <summary>One line per mesh with its materials and components, to see what a prefab is made of.</summary>

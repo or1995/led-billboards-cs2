@@ -12,7 +12,7 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
 
 > ⚠️ **Experimental: use at your own risk and back up your saves.**
 >
-> Status: work in progress (v0.3). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
+> Status: work in progress (v0.4). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
 > Built with the help of [Claude](https://claude.com/claude-code).
 
 ## Features
@@ -30,7 +30,9 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
   - **Video**: MP4, WebM, MOV, M4V, AVI, WMV, OGV. Videos loop and are muted.
 - **Per-screen controls** in the info panel when you click a screen: media, speed, brightness, sync / random start.
 - **Playlists:** a screen can cycle through several files **in order** or **shuffled**, switching every 2–120 seconds.
-- **Realistic LED look (optional):** a *Pixelated* or *LED dots* effect with adjustable LED resolution.
+- **Realistic LED look (optional):** a *Pixelated* or *LED dots* effect with adjustable LED resolution, set for all screens or per screen.
+- **Along roads like trees:** street-level screens can fill a road's tree spots in Line/Curve mode, each shuffling your media.
+- **Live media folder:** new and changed files show up in game within seconds.
 - **Self-lit:** screens keep the same brightness day and night, like a real LED panel. The LED versions of the billboards have no floodlights.
 - **Saved with your city:** each screen keeps its media, playlist and settings.
 - **Light on performance:** media is shared between screens, off-screen and distant screens aren't drawn, and GIF uploads are spread over several frames.

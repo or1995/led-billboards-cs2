@@ -33,6 +33,12 @@ namespace LedScreens
             Settings.RegisterInOptionsUI();
             GameManager.instance.localizationManager.AddSource("en-US", new LocaleEN(Settings));
             AssetDatabase.global.LoadSettings(nameof(LedScreens), Settings, new Setting(this));
+            // A testing override left on hides one side of every double-sided screen; don't keep it across restarts.
+            if (Settings.FacesOverride != ScreenFacesOverride.Auto)
+            {
+                log.Info($"Resetting the 'Screen sides' debug option ({Settings.FacesOverride}) to Auto");
+                Settings.FacesOverride = ScreenFacesOverride.Auto;
+            }
 
             // Vanilla prefabs are loaded after mods, so the screen prefabs are created on game preload.
             updateSystem.UpdateAt<LedScreenPrefabSystem>(SystemUpdatePhase.PrefabUpdate);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using LedScreens.Components;
 
 namespace LedScreens.Media
@@ -62,16 +63,28 @@ namespace LedScreens.Media
             return item;
         }
 
-        // Main thread only (render system and UI), so one scratch buffer is enough.
-        private static int[] s_Order = new int[64];
+        // A round's order only changes when the round does (count x interval seconds), but every
+        // shuffling screen needs it every frame, so keep the orders around. Main thread only.
+        private const int kMaxCachedOrders = 4096;
+        private static readonly Dictionary<(uint, long, int), int[]> s_Orders = new Dictionary<(uint, long, int), int[]>();
 
         /// <summary>Element <paramref name="index"/> of a seeded Fisher-Yates shuffle of 0..count-1.</summary>
         private static int Shuffled(uint seed, long round, int count, int index)
         {
-            // Playlists are short, so rebuilding the permutation is cheaper than caching it.
-            if (s_Order.Length < count)
-                s_Order = new int[Math.Max(count, s_Order.Length * 2)];
-            int[] order = s_Order;
+            var key = (seed, round, count);
+            if (!s_Orders.TryGetValue(key, out int[] order))
+            {
+                if (s_Orders.Count >= kMaxCachedOrders)
+                    s_Orders.Clear();
+                order = BuildOrder(seed, round, count);
+                s_Orders.Add(key, order);
+            }
+            return order[index];
+        }
+
+        private static int[] BuildOrder(uint seed, long round, int count)
+        {
+            var order = new int[count];
             for (int i = 0; i < count; i++)
                 order[i] = i;
 
@@ -82,7 +95,7 @@ namespace LedScreens.Media
                 int j = (int)(state % (uint)(i + 1));
                 (order[i], order[j]) = (order[j], order[i]);
             }
-            return order[index];
+            return order;
         }
 
         private static uint Hash(uint x)

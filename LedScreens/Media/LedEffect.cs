@@ -68,17 +68,19 @@ namespace LedScreens.Media
                 return clip;
 
             var result = new DecodedClip { PointFilter = mode == LedEffectMode.Pixelated };
-            foreach (var frame in clip.Frames)
+            for (int i = 0; i < clip.Frames.Count; i++)
             {
-                result.Frames.Add(ApplyFrame(frame, clip.Width, clip.Height, mode, columns, out int width, out int height));
+                result.Frames.Add(ApplyFrame(clip.Frames[i], clip.Width, clip.Height, mode, columns, out int width, out int height));
                 result.Width = width;
                 result.Height = height;
+                BufferPool<Color32>.Return(clip.Frames[i]);
+                clip.Frames[i] = null;
             }
             result.Delays.AddRange(clip.Delays);
             return result;
         }
 
-        /// <summary>Applies the effect to one bottom-up, opaque frame.</summary>
+        /// <summary>Applies the effect to one bottom-up, opaque frame. The result comes from <see cref="BufferPool{T}"/>.</summary>
         public static Color32[] ApplyFrame(Color32[] pixels, int width, int height, LedEffectMode mode, int columns, out int outWidth, out int outHeight)
         {
             GridSize(width, height, columns, out int ledWidth, out int ledHeight);
@@ -93,7 +95,7 @@ namespace LedScreens.Media
             var mask = Mask;
             outWidth = ledWidth * kCellSize;
             outHeight = ledHeight * kCellSize;
-            var result = new Color32[outWidth * outHeight];
+            var result = BufferPool<Color32>.Rent(outWidth * outHeight); // every pixel is written below
             for (int ly = 0; ly < ledHeight; ly++)
             {
                 for (int lx = 0; lx < ledWidth; lx++)
@@ -110,6 +112,7 @@ namespace LedScreens.Media
                     }
                 }
             }
+            BufferPool<Color32>.Return(leds);
             return result;
         }
 
@@ -166,7 +169,7 @@ namespace LedScreens.Media
 
         private static Color32[] BoxResample(Color32[] source, int width, int height, int outWidth, int outHeight)
         {
-            var result = new Color32[outWidth * outHeight];
+            var result = BufferPool<Color32>.Rent(outWidth * outHeight); // every pixel is written below
             for (int oy = 0; oy < outHeight; oy++)
             {
                 int y0 = oy * height / outHeight;

@@ -17,6 +17,9 @@ namespace LedScreens.Systems
     /// </summary>
     public partial class LedScreenInitSystem : GameSystemBase
     {
+        // Road-side screens come in numbers; switching less often keeps media loading down.
+        private const float kRoadSideInterval = 30f;
+
         private EntityQuery m_CreatedQuery;
         private EntityQuery m_PlaceholderQuery;
         private SelectedInfoUISystem m_SelectedInfoUISystem;
@@ -69,6 +72,14 @@ namespace LedScreens.Systems
                     else
                     {
                         screen = LedScreen.Create(Mod.Settings?.DefaultMedia);
+                        // Screens in a road's tree spots can't easily be picked one by one, so
+                        // give each its own shuffle so a street doesn't show the same ad everywhere.
+                        if (EntityManager.HasComponent<Secondary>(entity) && (Mod.Settings?.RoadSideShuffle ?? true))
+                        {
+                            screen.m_Playlist = PlaylistMode.Shuffle;
+                            screen.m_Interval = kRoadSideInterval;
+                            screen.m_TimeOffset = UnityEngine.Random.Range(0f, 600f);
+                        }
                     }
 
                     EntityManager.SetComponentData(entity, screen);

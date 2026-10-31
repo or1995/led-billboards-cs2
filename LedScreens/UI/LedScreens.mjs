@@ -3,7 +3,7 @@
  *
  * Id: LedScreens
  * Author: LedScreens
- * Version: 0.3.0
+ * Version: 0.4.0
  * Dependencies:
  */
 
@@ -69,6 +69,40 @@ function SmallButton({ label, selected, onSelect, tooltip }) {
         onSelect,
         style: { padding: "4rem 10rem", marginRight: "6rem", marginTop: "4rem" },
     }, label);
+}
+
+// Per-screen LED effect (C# ScreenEffect); the global setting uses LedEffectMode (Off, Pixelated, LED dots).
+const EFFECT_DEFAULT = 0;
+const EFFECT_NAMES = ["Smooth", "Pixelated", "LED dots"];
+const EFFECT_TOOLTIPS = [
+    "Smooth image",
+    "Sharp square pixels at the LED resolution",
+    "Round glowing dots with dark gaps, like a real LED panel up close",
+];
+
+/** LED look of this screen: follow the mod setting, or pick one. */
+function EffectControls({ effect, defaultEffect }) {
+    const current = effect === EFFECT_DEFAULT ? defaultEffect : effect - 1;
+    return h(React.Fragment, null,
+        h(PanelSectionRow, {
+            left: "LED effect",
+            right: effect === EFFECT_DEFAULT ? `${EFFECT_NAMES[current]} (default)` : EFFECT_NAMES[current],
+            subRow: true,
+        }),
+        ButtonRow(
+            h(SmallButton, {
+                label: "Default",
+                selected: effect === EFFECT_DEFAULT,
+                tooltip: `Follow the LED effect in the mod settings (now: ${EFFECT_NAMES[defaultEffect]})`,
+                onSelect: () => trigger(GROUP, "setEffect", EFFECT_DEFAULT),
+            }),
+            ...EFFECT_NAMES.map((name, i) => h(SmallButton, {
+                key: name,
+                label: name,
+                selected: effect === i + 1,
+                tooltip: EFFECT_TOOLTIPS[i],
+                onSelect: () => trigger(GROUP, "setEffect", i + 1),
+            }))));
 }
 
 const PLAYLIST_OFF = 0;
@@ -165,6 +199,8 @@ function LedScreenSection(props) {
             onChange: (v) => trigger(GROUP, "setSpeed", v),
         }),
 
+        h(EffectControls, props),
+
         h(PanelSectionRow, { left: "Brightness", right: `${Math.round(brightness * 100)}%`, subRow: true }),
         h(ValueSlider, {
             value: brightness, start: 0, end: 3, step: 0.05,
@@ -192,7 +228,7 @@ function LedScreenSection(props) {
             }),
             h(SmallButton, {
                 label: "Reload",
-                tooltip: "Rescan the media folder for new or changed files",
+                tooltip: "Reload all media. New and changed files are picked up automatically within a few seconds.",
                 onSelect: () => trigger(GROUP, "reloadMedia"),
             }),
             h(SmallButton, {

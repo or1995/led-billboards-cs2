@@ -52,6 +52,10 @@ Only shader variants the game itself uses ship in the build. The emissive-map an
   - decodes GIFs on worker threads (`GifDecoder`, a custom decoder) and uploads frames within a 4 ms per-frame budget;
   - loads PNG/JPG with `ImageConversion`;
   - streams videos with `VideoPlayer` into render textures;
+  - bakes the LED effect into the textures while loading, so media is cached per file *and* effect (screens can override the global effect);
+  - only starts loads for screens that are on screen; out-of-view screens just keep already-loaded media alive;
+  - reuses the big per-frame arrays through `BufferPool` (the game's garbage collector stops the world);
+  - can cache converted GIFs on disk (`MediaCache`, optional);
   - unloads media nobody has looked at for 60 seconds.
 
 ### Info panel
@@ -65,7 +69,7 @@ Only shader variants the game itself uses ship in the build. The emissive-map an
 
 | Data | Type | Contents |
 |---|---|---|
-| `LedScreen` | `IComponentData`, `ISerializable`, versioned | media, speed, brightness, offset, playlist mode, interval, shuffle seed |
+| `LedScreen` | `IComponentData`, `ISerializable`, versioned | media, speed, brightness, offset, playlist mode, interval, shuffle seed, LED effect (v3) |
 | `LedPlaylistItem` | buffer | the ticked playlist files |
 
 Renamed prefabs keep old saves working through `ObsoleteIdentifiers` (see `LegacyNames` in the templates).

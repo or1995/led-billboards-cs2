@@ -29,7 +29,7 @@ namespace LedScreens.Systems
         public sealed class ScreenTemplate
         {
             public ScreenTemplate(string source, string name, string displayName, ScreenFaces faces, float insetSide, float insetTop, float insetBottom,
-                Layout layout = null, string[] legacyNames = null)
+                Layout layout = null, string[] legacyNames = null, bool roadSide = false)
             {
                 Source = source;
                 Name = name;
@@ -40,6 +40,7 @@ namespace LedScreens.Systems
                 InsetBottom = insetBottom;
                 Layout = layout;
                 LegacyNames = legacyNames ?? Array.Empty<string>();
+                RoadSide = roadSide;
             }
 
             public string Source { get; }
@@ -58,6 +59,9 @@ namespace LedScreens.Systems
 
             /// <summary>Earlier names of this prefab; saves that use them load as this prefab.</summary>
             public string[] LegacyNames { get; }
+
+            /// <summary>Can be drawn along roads like trees (Line/Curve mode with road snapping fills the road's tree spots).</summary>
+            public bool RoadSide { get; }
         }
 
         /// <summary>
@@ -153,8 +157,8 @@ namespace LedScreens.Systems
                 Layout.Wall(2, 6), legacyNames: new[] { "LedFacadeHuge1x3" }),
 
             // Free-standing billboards
-            new ScreenTemplate("BillboardSmall01", "LedScreenSmall01", "LED Billboard (Small)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
-            new ScreenTemplate("BillboardSmall02", "LedScreenSmall02", "LED Billboard (Small 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
+            new ScreenTemplate("BillboardSmall01", "LedScreenSmall01", "LED Billboard (Small)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f, roadSide: true),
+            new ScreenTemplate("BillboardSmall02", "LedScreenSmall02", "LED Billboard (Small 2)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f, roadSide: true),
             new ScreenTemplate("BillboardMedium02", "LedScreenMedium02", "LED Billboard (Medium)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f,
                 legacyNames: new[] { "LedScreenMedium01" }),
             new ScreenTemplate("BillboardLarge02", "LedScreenLarge02", "LED Billboard (Large)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f,
@@ -162,21 +166,33 @@ namespace LedScreens.Systems
             new ScreenTemplate("BillboardHuge02", "LedScreenHuge02", "LED Billboard (Huge)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f,
                 legacyNames: new[] { "LedScreenHuge01" }),
             new ScreenTemplate("BillboardWallSmall01", "LedTotemSmall2x3", "LED Street Totem", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 2, rows: 3, poles: 1, poleDiameter: 0.2f, elevation: 0.4f)),
+                Layout.OnPoles(columns: 2, rows: 3, poles: 1, poleDiameter: 0.2f, elevation: 0.4f), roadSide: true),
             new ScreenTemplate("BillboardWallSmall01", "LedTotemSmall2x3Double", "LED Street Totem (Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 2, rows: 3, poles: 1, poleDiameter: 0.2f, elevation: 0.4f, doubleSided: true)),
+                Layout.OnPoles(columns: 2, rows: 3, poles: 1, poleDiameter: 0.2f, elevation: 0.4f, doubleSided: true), roadSide: true),
             new ScreenTemplate("BillboardWallLarge01", "LedRoadsideLarge01", "LED Roadside Screen (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.3f, elevation: 2.5f)),
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.3f, elevation: 2.5f), roadSide: true),
             new ScreenTemplate("BillboardWallHuge02", "LedRoadsideHuge01", "LED Roadside Screen (Huge)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 Layout.OnPoles(columns: 1, rows: 1, poles: 3, poleDiameter: 0.4f, elevation: 3f)),
+            new ScreenTemplate("BillboardWallLarge01", "LedRoadsideLargeDouble", "LED Roadside Screen (Large, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.3f, elevation: 2.5f, doubleSided: true), roadSide: true),
+            new ScreenTemplate("BillboardWallSmall01", "LedPoleBannerDouble", "LED Lamp-Post Banner (Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 2, poles: 1, poleDiameter: 0.2f, elevation: 3f, doubleSided: true), roadSide: true),
+            new ScreenTemplate("BillboardWallSmall01", "LedCityLightDouble", "LED City Light Poster (Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 2, rows: 2, poles: 2, poleDiameter: 0.15f, elevation: 0.3f, doubleSided: true), roadSide: true),
+            new ScreenTemplate("BillboardWallMedium01", "LedSidewalkSignDouble", "LED Sidewalk Sign (Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.2f, elevation: 1.2f, doubleSided: true), roadSide: true),
+            new ScreenTemplate("BillboardWallMedium01", "LedStreetTickerDouble", "LED Street Ticker (Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 3, rows: 1, poles: 2, poleDiameter: 0.2f, elevation: 2.4f, doubleSided: true), roadSide: true),
 
             // High-pole screens
             new ScreenTemplate("BillboardWallMedium01", "LedScreenHighPoleMedium01", "LED High-Pole Screen (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.35f, elevation: 6f)),
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.35f, elevation: 6f), roadSide: true),
+            new ScreenTemplate("BillboardWallMedium01", "LedHighPoleMediumDouble", "LED High-Pole Screen (Medium, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.35f, elevation: 6f, doubleSided: true), roadSide: true),
             new ScreenTemplate("BillboardWallLarge01", "LedScreenHighPoleLarge01", "LED High-Pole Screen (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.4f, elevation: 7f)),
             new ScreenTemplate("BillboardWallLarge01", "LedHighPoleLargeDouble", "LED High-Pole Screen (Large, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.4f, elevation: 7f, doubleSided: true)),
+                Layout.OnPoles(columns: 1, rows: 1, poles: 2, poleDiameter: 0.4f, elevation: 7f, doubleSided: true), roadSide: true),
             new ScreenTemplate("BillboardWallHuge02", "LedScreenHighPoleHuge01", "LED High-Pole Screen (Huge)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 1.4f, elevation: 9f)),
             new ScreenTemplate("BillboardWallHuge02", "LedHighPoleHugeDouble", "LED High-Pole Screen (Huge, Double-Sided)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
@@ -198,10 +214,12 @@ namespace LedScreens.Systems
             new ScreenTemplate("BillboardRoundSmall01", "LedScreenRoundSmall01", "LED Round Billboard (Small)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
             new ScreenTemplate("BillboardRoundMedium01", "LedScreenRoundMedium01", "LED Round Billboard (Medium)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
             new ScreenTemplate("BillboardRoundLarge01", "LedScreenRoundLarge01", "LED Round Billboard (Large)", ScreenFaces.Both, 0.03f, 0.03f, 0.5f),
+            new ScreenTemplate("BillboardRoundSmall01", "LedRoundPoleSmall01", "LED Round Sign on Pole (Small)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.15f, elevation: 2.2f, doubleSided: true), roadSide: true),
             new ScreenTemplate("BillboardRoundMedium01", "LedRoundPoleMedium01", "LED Round Sign on Pole (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.2f, elevation: 2.6f, doubleSided: true)),
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.2f, elevation: 2.6f, doubleSided: true), roadSide: true),
             new ScreenTemplate("BillboardRoundLarge01", "LedRoundPoleLarge01", "LED Round Sign on Pole (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
-                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.25f, elevation: 3.2f, doubleSided: true)),
+                Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.25f, elevation: 3.2f, doubleSided: true), roadSide: true),
         };
 
         // Clones must not inherit these: they would make the game spawn our screens on
@@ -303,9 +321,16 @@ namespace LedScreens.Systems
                 screen.m_InsetTop = template.InsetTop;
                 screen.m_InsetBottom = template.InsetBottom;
                 screen.m_Round = template.Round;
+                screen.m_RoadSide = template.RoadSide;
 
                 Mod.log.Info(AdPanelMeasurer.Describe(source));
                 bool measured = AdPanelMeasurer.TryMeasure(source, out var panel);
+                // Free-standing billboards have the ad on the front only; put a screen on their plain back too.
+                if (measured && template.Layout == null && template.Faces == ScreenFaces.Both && !template.Round &&
+                    panel.m_Faces == ScreenFaces.Front && !AdPanelMeasurer.TryMeasureBack(source, ref panel))
+                {
+                    Mod.log.Warn($"{template.Name}: no flat back found, showing the front only");
+                }
                 if (template.Layout != null)
                 {
                     if (template.Layout.HasPoles)
@@ -323,8 +348,9 @@ namespace LedScreens.Systems
                     screen.m_PanelSize = panel.m_Size;
                     screen.m_PanelNormal = panel.m_Normal;
                     screen.m_PanelHalfDepth = panel.m_HalfDepth;
+                    screen.m_PanelBackDistance = panel.m_BackDistance;
                     screen.m_Faces = panel.m_Faces;
-                    Mod.log.Info($"{template.Name}: ad panel center {panel.m_Center} size {panel.m_Size} normal {panel.m_Normal} halfDepth {panel.m_HalfDepth:0.000} faces {panel.m_Faces}");
+                    Mod.log.Info($"{template.Name}: ad panel center {panel.m_Center} size {panel.m_Size} normal {panel.m_Normal} halfDepth {panel.m_HalfDepth:0.000} back {panel.m_BackDistance:0.000} faces {panel.m_Faces}");
                 }
                 else
                 {

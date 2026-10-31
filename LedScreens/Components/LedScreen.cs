@@ -24,11 +24,21 @@ namespace LedScreens.Components
         Shuffle = 2,
     }
 
+    /// <summary>LED look of one screen: the global setting, or its own choice.</summary>
+    public enum ScreenEffect : int
+    {
+        /// <summary>Use the "LED pixel effect" setting.</summary>
+        Default = 0,
+        Off = 1,
+        Pixelated = 2,
+        LedDots = 3,
+    }
+
     /// <summary>Per placed screen: what it plays and how. Saved with the city.</summary>
     public struct LedScreen : IComponentData, IQueryTypeParameter, ISerializable
     {
-        // 1: media, speed, brightness, offset, flags. 2: + playlist mode, interval, seed.
-        private const int kVersion = 2;
+        // 1: media, speed, brightness, offset, flags. 2: + playlist mode, interval, seed. 3: + effect.
+        private const int kVersion = 3;
 
         public const float kDefaultInterval = 10f;
 
@@ -51,6 +61,8 @@ namespace LedScreens.Components
 
         /// <summary>Makes each screen shuffle in its own order.</summary>
         public uint m_Seed;
+
+        public ScreenEffect m_Effect;
 
         public static LedScreen Create(string media)
         {
@@ -77,6 +89,7 @@ namespace LedScreens.Components
             writer.Write((int)m_Playlist);
             writer.Write(m_Interval);
             writer.Write(m_Seed);
+            writer.Write((int)m_Effect);
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader
@@ -100,6 +113,13 @@ namespace LedScreens.Components
                 reader.Read(out m_Interval);
                 reader.Read(out m_Seed);
                 m_Playlist = (PlaylistMode)playlist;
+            }
+
+            m_Effect = ScreenEffect.Default;
+            if (version >= 3)
+            {
+                reader.Read(out int effect);
+                m_Effect = (ScreenEffect)effect;
             }
         }
     }

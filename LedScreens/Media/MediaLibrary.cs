@@ -13,7 +13,8 @@ namespace LedScreens.Media
     /// Owns all loaded media. GIFs are decoded on worker threads and uploaded to the GPU on the
     /// main thread in small time slices; images are read on a worker and decoded by Unity on the
     /// main thread; videos stream through a VideoPlayer. Media nobody looked at for a while is
-    /// unloaded. All public members must be called from the main thread.
+    /// unloaded. The LED effect is baked in while loading, so each file is loaded once per effect
+    /// that screens use. All public members must be called from the main thread.
     /// </summary>
     public sealed class MediaLibrary : IDisposable
     {
@@ -23,18 +24,23 @@ namespace LedScreens.Media
         private const float kUnloadAfterSeconds = 60f;
         private const float kUnloadVideoAfterSeconds = 300f;
         private const float kUnloadCheckInterval = 5f;
+        private const float kFolderCheckInterval = 3f;
 
         private static readonly string[] kGifExtensions = { ".gif" };
         private static readonly string[] kImageExtensions = { ".png", ".jpg", ".jpeg" };
         // What Unity's VideoPlayer can play on Windows (through Media Foundation).
         private static readonly string[] kVideoExtensions = { ".mp4", ".m4v", ".mov", ".webm", ".avi", ".wmv", ".ogv" };
 
-        private readonly Dictionary<string, IMedia> m_Media = new Dictionary<string, IMedia>();
-        private readonly Dictionary<string, Task<DecodedClip>> m_Decoding = new Dictionary<string, Task<DecodedClip>>();
-        private readonly Dictionary<string, Task<byte[]>> m_ReadingImages = new Dictionary<string, Task<byte[]>>();
-        private readonly HashSet<string> m_Failed = new HashSet<string>();
+        private readonly Dictionary<MediaKey, IMedia> m_Media = new Dictionary<MediaKey, IMedia>();
+        private readonly Dictionary<MediaKey, Task<DecodedClip>> m_Decoding = new Dictionary<MediaKey, Task<DecodedClip>>();
+        private readonly Dictionary<MediaKey, Task<byte[]>> m_ReadingImages = new Dictionary<MediaKey, Task<byte[]>>();
+        private readonly HashSet<MediaKey> m_Failed = new HashSet<MediaKey>();
         private readonly Stopwatch m_Stopwatch = new Stopwatch();
         private List<string> m_Available = new List<string>();
+        // File name -> size/date stamp from the last folder scan, to spot new, changed and deleted files.
+        private Dictionary<string, long> m_Snapshot = new Dictionary<string, long>();
+        private Task<Dictionary<string, long>> m_FolderScan;
+        private float m_NextFolderCheck;
         private PendingUpload m_Upload;
         private float m_NextUnloadCheck;
         private int m_LoadSettingsHash;
@@ -44,6 +50,9 @@ namespace LedScreens.Media
         public string MediaFolder { get; private set; }
 
         public IReadOnlyList<string> Available => m_Available;
+
+        /// <summary>Goes up whenever <see cref="Available"/> changes, so UI lists know to refresh.</summary>
+        public int Version { get; private set; }
 
         /// <summary>Shown while media is loading or when its file is missing or broken.</summary>
         public Texture2D NoSignal { get; private set; }
@@ -62,40 +71,44 @@ namespace LedScreens.Media
         {
             try
             {
-                m_Available = Directory.EnumerateFiles(MediaFolder, "*.*", SearchOption.AllDirectories)
-                    .Where(path => GetKind(path) != Kind.Unsupported)
-                    .Select(path => path.Substring(MediaFolder.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/'))
-                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                SetSnapshot(ScanFolder(MediaFolder));
             }
             catch (Exception e)
             {
                 Mod.log.Error(e, $"Failed to scan media folder {MediaFolder}");
-                m_Available = new List<string>();
+                SetSnapshot(new Dictionary<string, long>());
             }
 
             UnloadAll();
             Mod.log.Info($"Media folder {MediaFolder}: {m_Available.Count} file(s)");
         }
 
-        /// <summary>Returns the media if it is loaded, otherwise starts loading it and returns null.</summary>
-        public IMedia GetClip(string name, float now)
+        /// <summary>Returns the media with this LED effect if it is loaded, otherwise starts loading it and returns null.</summary>
+        public IMedia GetClip(string name, LedEffectMode effect, float now)
         {
             if (string.IsNullOrEmpty(name))
                 return null;
 
-            if (m_Media.TryGetValue(name, out var media))
+            var key = new MediaKey(name, effect);
+            if (m_Media.TryGetValue(key, out var media))
             {
                 media.LastUsedTime = now;
                 return media;
             }
 
-            if (!m_Decoding.ContainsKey(name) && !m_ReadingImages.ContainsKey(name) && !m_Failed.Contains(name) &&
-                (m_Upload == null || m_Upload.Name != name))
+            if (!m_Decoding.ContainsKey(key) && !m_ReadingImages.ContainsKey(key) && !m_Failed.Contains(key) &&
+                (m_Upload == null || !m_Upload.Key.Equals(key)))
             {
-                StartLoad(name, now);
+                StartLoad(key, now);
             }
             return null;
+        }
+
+        /// <summary>Keeps the media loaded if it already is, without starting a load (for screens out of view).</summary>
+        public void Touch(string name, LedEffectMode effect, float now)
+        {
+            if (!string.IsNullOrEmpty(name) && m_Media.TryGetValue(new MediaKey(name, effect), out var media))
+                media.LastUsedTime = now;
         }
 
         /// <summary>Call once per frame from the main thread.</summary>
@@ -103,7 +116,8 @@ namespace LedScreens.Media
         {
             m_Stopwatch.Restart();
 
-            // Media is baked with the quality/effect settings, so reload it when they change.
+            // Media is baked with the quality settings, so reload it when they change. A new LED
+            // effect needs no reload: screens simply ask for the other variant.
             int settingsHash = LoadSettingsHash();
             if (m_LoadSettingsHash != 0 && settingsHash != m_LoadSettingsHash)
             {
@@ -120,8 +134,8 @@ namespace LedScreens.Media
                 if (m_Upload.UploadNext())
                 {
                     var clip = m_Upload.CreateClip();
-                    Add(clip, now);
-                    Mod.log.Info($"Loaded '{clip.Name}': {clip.Width}x{clip.Height}, {clip.FrameCount} frames, {clip.Duration:0.00}s, {clip.MemoryBytes / (1024f * 1024f):0.0} MB");
+                    Add(m_Upload.Key, clip, now);
+                    Mod.log.Info($"Loaded '{m_Upload.Key}': {clip.Width}x{clip.Height}, {clip.FrameCount} frames, {clip.Duration:0.00}s, {clip.MemoryBytes / (1024f * 1024f):0.0} MB");
                     m_Upload = null;
                     TakeFinishedDecode();
                 }
@@ -136,6 +150,8 @@ namespace LedScreens.Media
                 if (media is VideoMedia video)
                     video.Update(now);
             }
+
+            CheckFolder(now);
 
             if (now >= m_NextUnloadCheck)
             {
@@ -154,6 +170,105 @@ namespace LedScreens.Media
             }
         }
 
+        /// <summary>
+        /// Every few seconds, lists the media folder on a worker thread. New files show up in the
+        /// lists; changed or deleted ones are dropped so they load again. Nothing else reloads.
+        /// </summary>
+        private void CheckFolder(float now)
+        {
+            if (m_FolderScan == null)
+            {
+                if (now < m_NextFolderCheck || MediaFolder == null)
+                    return;
+                string folder = MediaFolder;
+                m_FolderScan = Task.Run(() => ScanFolder(folder));
+                return;
+            }
+            if (!m_FolderScan.IsCompleted)
+                return;
+
+            var scan = m_FolderScan;
+            m_FolderScan = null;
+            m_NextFolderCheck = now + kFolderCheckInterval;
+            if (scan.IsFaulted)
+                return;
+
+            var files = scan.Result;
+            int added = 0, changed = 0, removed = 0;
+            foreach (var pair in files)
+            {
+                if (!m_Snapshot.TryGetValue(pair.Key, out long stamp))
+                    added++;
+                else if (stamp == pair.Value)
+                    continue;
+                else
+                    changed++;
+                Forget(pair.Key); // also clears an earlier "not found"
+            }
+            foreach (var name in m_Snapshot.Keys)
+            {
+                if (!files.ContainsKey(name))
+                {
+                    removed++;
+                    Forget(name);
+                }
+            }
+            if (added + changed + removed == 0)
+                return;
+
+            SetSnapshot(files);
+            Mod.log.Info($"Media folder changed: {added} new, {changed} changed, {removed} removed ({m_Available.Count} file(s))");
+        }
+
+        private void SetSnapshot(Dictionary<string, long> files)
+        {
+            m_Snapshot = files;
+            m_Available = files.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToList();
+            Version++;
+        }
+
+        /// <summary>Media files in the folder (names relative to it, with '/') and a size/date stamp for each.</summary>
+        private static Dictionary<string, long> ScanFolder(string folder)
+        {
+            var files = new Dictionary<string, long>(StringComparer.Ordinal);
+            foreach (string path in Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories))
+            {
+                if (GetKind(path) == Kind.Unsupported)
+                    continue;
+                try
+                {
+                    var info = new FileInfo(path);
+                    string name = path.Substring(folder.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/');
+                    files[name] = info.LastWriteTimeUtc.Ticks * 31 + info.Length;
+                }
+                catch (IOException)
+                {
+                    // Being copied or deleted right now; the next scan gets it.
+                }
+            }
+            return files;
+        }
+
+        /// <summary>Drops everything loaded or loading for this file (all LED effects), so it loads fresh next time.</summary>
+        private void Forget(string name)
+        {
+            foreach (var key in m_Media.Keys.Where(k => k.Name == name).ToList())
+            {
+                m_Media[key].Dispose();
+                m_Media.Remove(key);
+            }
+            m_Failed.RemoveWhere(k => k.Name == name);
+            foreach (var key in m_Decoding.Keys.Where(k => k.Name == name).ToList())
+                m_Decoding.Remove(key);
+            foreach (var key in m_ReadingImages.Keys.Where(k => k.Name == name).ToList())
+                m_ReadingImages.Remove(key);
+            if (m_Upload != null && m_Upload.Key.Name == name)
+            {
+                m_Upload.Abort();
+                m_Upload = null;
+            }
+        }
+
         private static int LoadSettingsHash()
         {
             var s = Mod.Settings;
@@ -165,7 +280,6 @@ namespace LedScreens.Media
                 hash = hash * 31 + s.MaxTextureSize;
                 hash = hash * 31 + s.MaxFrames;
                 hash = hash * 31 + (s.CompressTextures ? 1 : 0);
-                hash = hash * 31 + (int)s.LedEffect;
                 hash = hash * 31 + s.LedResolution;
                 return hash == 0 ? 1 : hash;
             }
@@ -193,17 +307,21 @@ namespace LedScreens.Media
             return Kind.Unsupported;
         }
 
-        private void StartLoad(string name, float now)
+        private void StartLoad(MediaKey key, float now)
         {
             var setting = Mod.Settings;
             int maxSize = setting?.MaxTextureSize ?? 512;
             int maxFrames = setting?.MaxFrames ?? 300;
-            var effect = setting?.LedEffect ?? LedEffectMode.Off;
             int columns = setting?.LedResolution ?? 128;
+            bool compress = setting?.CompressTextures ?? true;
+            bool useCache = setting?.CacheConvertedMedia ?? false;
+            long cacheLimit = (long)(setting?.CacheSizeLimitGB ?? 4) * 1024 * 1024 * 1024;
+            string name = key.Name;
+            var effect = key.Effect;
 
             if (name == kTestPattern)
             {
-                m_Decoding[name] = Task.Run(() => LedEffect.Apply(TestPattern.Generate(), effect, columns));
+                m_Decoding[key] = Task.Run(() => TextureEncoder.Encode(LedEffect.Apply(TestPattern.Generate(), effect, columns), compress));
                 return;
             }
 
@@ -211,32 +329,46 @@ namespace LedScreens.Media
             if (!path.StartsWith(Path.GetFullPath(MediaFolder), StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
             {
                 Mod.log.Warn($"Media '{name}' not found in {MediaFolder}");
-                m_Failed.Add(name);
+                m_Failed.Add(key);
                 return;
             }
 
             switch (GetKind(path))
             {
                 case Kind.Gif:
-                    m_Decoding[name] = Task.Run(() => LedEffect.Apply(GifDecoder.Decode(File.ReadAllBytes(path), maxSize, maxFrames), effect, columns));
+                    m_Decoding[key] = Task.Run(() =>
+                    {
+                        string cacheKey = null;
+                        if (useCache)
+                        {
+                            var info = new FileInfo(path);
+                            cacheKey = MediaCache.Key(name, info.LastWriteTimeUtc.Ticks * 31 + info.Length, effect, maxSize, maxFrames, columns, compress);
+                            if (MediaCache.TryLoad(cacheKey, out var cached))
+                                return cached;
+                        }
+                        var clip = TextureEncoder.Encode(LedEffect.Apply(GifDecoder.Decode(File.ReadAllBytes(path), maxSize, maxFrames), effect, columns), compress);
+                        if (cacheKey != null)
+                            MediaCache.Save(cacheKey, clip, cacheLimit);
+                        return clip;
+                    });
                     break;
                 case Kind.Image:
-                    m_ReadingImages[name] = Task.Run(() => File.ReadAllBytes(path));
+                    m_ReadingImages[key] = Task.Run(() => File.ReadAllBytes(path));
                     break;
                 case Kind.Video:
-                    Add(new VideoMedia(name, path, maxSize, effect, columns), now);
+                    Add(key, new VideoMedia(name, path, maxSize, effect, columns), now);
                     break;
                 default:
                     Mod.log.Warn($"Media '{name}' has an unsupported file type");
-                    m_Failed.Add(name);
+                    m_Failed.Add(key);
                     break;
             }
         }
 
-        private void Add(IMedia media, float now)
+        private void Add(MediaKey key, IMedia media, float now)
         {
             media.LastUsedTime = now;
-            m_Media[media.Name] = media;
+            m_Media[key] = media;
         }
 
         private void TakeFinishedDecode()
@@ -254,9 +386,7 @@ namespace LedScreens.Media
                     return;
                 }
 
-                bool compress = Mod.Settings?.CompressTextures ?? true;
-                var effect = Mod.Settings?.LedEffect ?? LedEffectMode.Off;
-                m_Upload = new PendingUpload(pair.Key, pair.Value.Result, compress, LedEffect.BrightnessCompensation(effect));
+                m_Upload = new PendingUpload(pair.Key, pair.Value.Result, LedEffect.BrightnessCompensation(pair.Key.Effect));
                 return;
             }
         }
@@ -274,10 +404,10 @@ namespace LedScreens.Media
                     if (pair.Value.IsFaulted)
                         throw pair.Value.Exception.GetBaseException();
 
-                    var effect = Mod.Settings?.LedEffect ?? LedEffectMode.Off;
-                    var frame = LoadImage(pair.Key, pair.Value.Result, Mod.Settings?.MaxTextureSize ?? 512, effect, Mod.Settings?.LedResolution ?? 128);
-                    var clip = new MediaClip(pair.Key, new[] { frame }, new[] { 1f }, LedEffect.BrightnessCompensation(effect));
-                    Add(clip, now);
+                    var effect = pair.Key.Effect;
+                    var frame = LoadImage(pair.Key.Name, pair.Value.Result, Mod.Settings?.MaxTextureSize ?? 512, effect, Mod.Settings?.LedResolution ?? 128);
+                    var clip = new MediaClip(pair.Key.Name, new[] { frame }, new[] { 1f }, LedEffect.BrightnessCompensation(effect));
+                    Add(pair.Key, clip, now);
                     Mod.log.Info($"Loaded image '{clip.Name}': {clip.Width}x{clip.Height}");
                 }
                 catch (Exception e)
@@ -319,6 +449,7 @@ namespace LedScreens.Media
                 };
                 led.SetPixels32(pixels);
                 led.Apply(true, true);
+                BufferPool<Color32>.Return(pixels);
                 return led;
             }
 
@@ -348,7 +479,7 @@ namespace LedScreens.Media
 
         private void UnloadUnused(float now)
         {
-            List<string> expired = null;
+            List<MediaKey> expired = null;
             foreach (var pair in m_Media)
             {
                 bool isVideo = pair.Value is VideoMedia;
@@ -356,18 +487,18 @@ namespace LedScreens.Media
                 // Videos take a moment to start again, so keep them around longer (playlists come back to them).
                 float unloadAfter = isVideo ? kUnloadVideoAfterSeconds : kUnloadAfterSeconds;
                 if (failedVideo || now - pair.Value.LastUsedTime > unloadAfter)
-                    (expired ??= new List<string>()).Add(pair.Key);
+                    (expired ??= new List<MediaKey>()).Add(pair.Key);
                 if (failedVideo)
                     m_Failed.Add(pair.Key);
             }
             if (expired == null)
                 return;
 
-            foreach (var name in expired)
+            foreach (var key in expired)
             {
-                m_Media[name].Dispose();
-                m_Media.Remove(name);
-                Mod.log.Info($"Unloaded media '{name}'");
+                m_Media[key].Dispose();
+                m_Media.Remove(key);
+                Mod.log.Info($"Unloaded media '{key}'");
             }
         }
 
@@ -405,43 +536,66 @@ namespace LedScreens.Media
             return texture;
         }
 
-        /// <summary>Uploads one decoded clip frame by frame so a big GIF doesn't freeze the game.</summary>
+        /// <summary>One file loaded with one LED effect.</summary>
+        private readonly struct MediaKey : IEquatable<MediaKey>
+        {
+            public readonly string Name;
+            public readonly LedEffectMode Effect;
+
+            public MediaKey(string name, LedEffectMode effect)
+            {
+                Name = name;
+                Effect = effect;
+            }
+
+            public bool Equals(MediaKey other) => Effect == other.Effect && string.Equals(Name, other.Name, StringComparison.Ordinal);
+
+            public override bool Equals(object obj) => obj is MediaKey other && Equals(other);
+
+            public override int GetHashCode() => (Name?.GetHashCode() ?? 0) * 31 + (int)Effect;
+
+            public override string ToString() => Effect == LedEffectMode.Off ? Name : $"{Name} ({Effect})";
+        }
+
+        /// <summary>
+        /// Uploads one decoded clip frame by frame so a big GIF doesn't freeze the game. The
+        /// frames arrive encoded (<see cref="TextureEncoder"/>), so each upload is just a copy.
+        /// </summary>
         private sealed class PendingUpload
         {
             private readonly DecodedClip m_Decoded;
-            private readonly bool m_Compress;
             private readonly float m_BrightnessScale;
             private readonly Texture[] m_Textures;
             private int m_Next;
 
-            public PendingUpload(string name, DecodedClip decoded, bool compress, float brightnessScale)
+            public PendingUpload(MediaKey key, DecodedClip decoded, float brightnessScale)
             {
-                Name = name;
+                Key = key;
                 m_Decoded = decoded;
-                m_Compress = compress;
                 m_BrightnessScale = brightnessScale;
-                m_Textures = new Texture[decoded.Frames.Count];
+                m_Textures = new Texture[decoded.Raw.Count];
             }
 
-            public string Name { get; }
+            public MediaKey Key { get; }
+
+            private string Name => Key.Name;
 
             /// <summary>Uploads one frame; returns true when all frames are done.</summary>
             public bool UploadNext()
             {
-                var texture = new Texture2D(m_Decoded.Width, m_Decoded.Height, TextureFormat.RGBA32, true)
+                var texture = new Texture2D(m_Decoded.Width, m_Decoded.Height, m_Decoded.Format, m_Decoded.MipCount, false)
                 {
                     name = $"LedScreens_{Name}_{m_Next}",
                     filterMode = m_Decoded.PointFilter ? FilterMode.Point : FilterMode.Trilinear,
                     wrapMode = TextureWrapMode.Clamp,
                     anisoLevel = 4,
                 };
-                texture.SetPixels32(m_Decoded.Frames[m_Next]);
-                texture.Apply(true, false);
-                if (m_Compress)
-                    texture.Compress(false);
+                texture.LoadRawTextureData(m_Decoded.Raw[m_Next]);
                 texture.Apply(false, true);
 
-                m_Decoded.Frames[m_Next] = null; // let the GC reclaim the CPU copy early
+                // The texture has its own copy now; let the next load reuse the buffer.
+                BufferPool<byte>.Return(m_Decoded.Raw[m_Next]);
+                m_Decoded.Raw[m_Next] = null;
                 m_Textures[m_Next++] = texture;
                 return m_Next >= m_Textures.Length;
             }
