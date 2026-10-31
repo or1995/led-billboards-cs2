@@ -3,7 +3,7 @@
  *
  * Id: LedScreens
  * Author: LedScreens
- * Version: 0.4.0
+ * Version: 0.4.5
  * Dependencies:
  */
 
@@ -168,7 +168,7 @@ function PlaylistControls({ playlistMode, interval, playlist, available, nowPlay
 }
 
 function LedScreenSection(props) {
-    const { media, isVideo, speed, brightness, synced, isDefault, available, playlistMode } = props;
+    const { media, isVideo, speed, brightness, synced, isDefault, available, playlistMode, roadScreens } = props;
     const dropdownTheme = tryGetModule("game-ui/common/input/dropdown/themes/default.module.scss", "classes");
     const playlistOn = playlistMode !== PLAYLIST_OFF;
 
@@ -184,8 +184,13 @@ function LedScreenSection(props) {
     const mediaPicker = h(Dropdown, { theme: dropdownTheme || undefined, content: items },
         h(DropdownToggle, { style: { minWidth: "180rem", maxWidth: "260rem" } }, mediaLabel(media)));
 
-    return h(PanelSection, { tooltip: "Animated LED screen. Put GIF, PNG, JPG or video files in the media folder." },
-        h(PanelSectionRow, { uppercase: true, left: "LED Screen" }),
+    const onRoad = roadScreens > 0;
+    return h(PanelSection, {
+        tooltip: onRoad
+            ? "The LED screens along this street. Changes here apply to all of them."
+            : "Animated LED screen. Put GIF, PNG, JPG or video files in the media folder.",
+    },
+        h(PanelSectionRow, { uppercase: true, left: onRoad ? `LED Screens on this street (${roadScreens})` : "LED Screen" }),
         playlistOn ? null : h(PanelSectionRow, { left: "Media", right: mediaPicker }),
         h(PlaylistControls, props),
 

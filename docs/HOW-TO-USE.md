@@ -41,6 +41,9 @@ Open **Landscaping → LED Screens** and pick a prop:
 | LED High-Pole Screen (…, Double-Sided) | Two screens back to back, showing the same media on both sides |
 | LED Round Billboard (Small / Medium / Large) | Round wall screens |
 | LED Round Sign on Pole (Small / Medium / Large) | Double-sided round signs on a pole |
+| LED Bridge Side Screen (16 / 24 / 32 m) | Double-sided strips hanging at the side of a pedestrian bridge (deck at the default 10 m elevation); line one up along each side |
+| LED Screen Cube (Hanging, Large / Medium) | Four screens around a box, floating at road-clearance height: put it under an arch, gantry or bridge |
+| LED Screen Cube on Pole (Large / Medium) | Four-sided screen cube on a pole hidden inside it |
 
 Each prop has its own icon in the toolbar showing its shape.
 
@@ -55,12 +58,15 @@ Some street-level screens can be drawn along a road the way trees are:
 - LED Lamp-Post Banner, LED City Light Poster, LED Sidewalk Sign, LED Street Ticker
 - LED High-Pole Screen (Medium, single or double-sided) and (Large, Double-Sided)
 - LED Round Sign on Pole (all)
+- LED Screen Cube on Pole (Medium)
 
 1. Pick the screen, then switch the tool to **Line** or **Curve** mode.
 2. Make sure road snapping is on.
 3. Drag along a road with sidewalks.
 
 The screens fill the road's tree spots, facing along the road. Double-sided screens are best here. Each one shuffles through all your media in its own order, switching every 30 seconds (change it per screen in the info panel). To have them play the **Media** setting instead, turn off *Road-side screens shuffle all media* in the options.
+
+Road-side screens can't be clicked one by one (the game sends those clicks to the road, which has no panel). Instead, **click the street's name label**: the street panel has an **LED Screens on this street** section with the usual controls (media, playlist, effect, speed, brightness), and changes apply to all the road-side screens along that street.
 
 ## 3. Change what a screen shows
 

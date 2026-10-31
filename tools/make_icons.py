@@ -28,7 +28,7 @@ WALL_HUGE = (12.56, 5.89)
 STEEL = 0.22        # flag pole trunk
 CONCRETE = 2.2      # chimney trunk
 
-# kind: wall | stand | pole | round | roundpole
+# kind: wall | stand | pole | round | roundpole | cube (poles = 0: hanging) | bridge
 # Each entry: name, kind, panel size, columns, rows, elevation (bottom of screen), poles, pole diameter, double-sided
 ICONS = [
     ("LedScreenWallSmall01", "wall", WALL_SMALL, 1, 1, 0, 0, 0, False),
@@ -78,6 +78,13 @@ ICONS = [
     ("LedRoundPoleSmall01", "roundpole", (0.86, 0.86), 1, 1, 2.2, 1, STEEL, True),
     ("LedRoundPoleMedium01", "roundpole", (1.47, 1.47), 1, 1, 2.6, 1, STEEL, True),
     ("LedRoundPoleLarge01", "roundpole", (2.69, 2.69), 1, 1, 3.2, 1, STEEL, True),
+    ("LedBridgeSide4x1", "bridge", WALL_MEDIUM, 4, 1, 8.8, 0, 0, True),
+    ("LedBridgeSide6x1", "bridge", WALL_MEDIUM, 6, 1, 8.8, 0, 0, True),
+    ("LedBridgeSide8x1", "bridge", WALL_MEDIUM, 8, 1, 8.8, 0, 0, True),
+    ("LedCubeHangingLarge", "cube", WALL_LARGE, 1, 1, 6.5, 0, 0, False),
+    ("LedCubeHangingMedium", "cube", WALL_MEDIUM, 1, 2, 5.5, 0, 0, False),
+    ("LedCubePoleLarge", "cube", WALL_LARGE, 1, 1, 9.0, 1, CONCRETE, False),
+    ("LedCubePoleMedium", "cube", WALL_MEDIUM, 1, 2, 3.0, 1, STEEL, False),
 ]
 
 BEZEL = (24, 26, 30, 255)
@@ -170,13 +177,63 @@ def draw_screen(canvas, box, name, cols, rows, round_face):
         d.line((inner[0], y, inner[2], y), fill=(16, 16, 20, 230), width=max(2, int(SS * 1.5)))
 
 
+def render_cube(name, panel, cols, rows, elevation, poles, diameter):
+    """A screen cube seen from a front corner: front face, a slanted side face, cables or a pole."""
+    big = SIZE * SS
+    canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    sw, sh = panel[0] * cols, panel[1] * rows
+    side_w, rise = sw * 0.42, sw * 0.24                # side face, drawn foreshortened
+    scene_w = sw + side_w
+    scene_h = elevation + sh + rise
+    avail = big - 2 * PAD * SS
+    scale = avail / max(scene_w, scene_h * 1.05)
+    ox = (big - scene_w * scale) / 2
+    ground_y = (big + scene_h * scale) / 2
+    fx0, fy0 = ox, ground_y - (elevation + sh) * scale
+    fw, fh = sw * scale, sh * scale
+    sdw, sdr = side_w * scale, rise * scale
+    d = ImageDraw.Draw(canvas)
+
+    if poles == 0:
+        # Cables up to the top of the icon.
+        for x, y in ((fx0 + fw * 0.15, fy0), (fx0 + fw * 0.85, fy0), (fx0 + fw + sdw * 0.8, fy0 - sdr * 0.8)):
+            d.line((x, y, x + (big / 2 - x) * 0.25, PAD * SS * 0.5), fill=STEEL_COLOR, width=max(3, SS * 2))
+    else:
+        d.rounded_rectangle((ox - SS * 4, ground_y - SS * 3, ox + scene_w * scale + SS * 4, ground_y + SS * 5), radius=SS * 3, fill=GROUND)
+        pole_color = CONCRETE_COLOR if diameter >= 1 else STEEL_COLOR
+        pw = max(SS * 5, diameter * scale)
+        cx = fx0 + fw / 2 + sdw / 2
+        d.rectangle((cx - pw / 2, fy0 + fh * 0.5, cx + pw / 2, ground_y), fill=pole_color)
+
+    # Top: the open box seen from above, dark inside.
+    d.polygon([(fx0, fy0), (fx0 + fw, fy0), (fx0 + fw + sdw, fy0 - sdr), (fx0 + sdw, fy0 - sdr)], fill=(40, 42, 48, 255))
+    inset = max(SS * 2, fw * 0.03)
+    d.polygon([(fx0 + inset * 2, fy0 - inset * 0.5), (fx0 + fw - inset, fy0 - inset * 0.5),
+               (fx0 + fw + sdw - inset * 2, fy0 - sdr + inset * 0.5), (fx0 + sdw + inset, fy0 - sdr + inset * 0.5)], fill=(14, 15, 18, 255))
+
+    # Side face: a screen sheared into a parallelogram and darkened a little.
+    side = Image.new("RGBA", (int(fw), int(fh)), (0, 0, 0, 0))
+    draw_screen(side, (0, 0, int(fw), int(fh)), name + "side", cols, rows, False)
+    out_w, out_h = int(sdw), int(fh + sdr)
+    sheared = side.transform((out_w, out_h), Image.AFFINE, (fw / sdw, 0, 0, sdr / sdw, 1, -sdr), Image.BILINEAR)
+    shade = Image.new("RGBA", sheared.size, (0, 0, 0, 0))
+    shade.paste((0, 0, 20, 70), mask=sheared.split()[3])
+    sheared.alpha_composite(shade)
+    canvas.alpha_composite(sheared, (int(fx0 + fw), int(fy0 - sdr)))
+
+    draw_screen(canvas, (fx0, fy0, fx0 + fw, fy0 + fh), name, cols, rows, False)
+    return canvas
+
+
 def render(name, kind, panel, cols, rows, elevation, poles, diameter, double):
+    if kind == "cube":
+        return render_cube(name, panel, cols, rows, elevation, poles, diameter)
     big = SIZE * SS
     canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     d = ImageDraw.Draw(canvas)
 
     sw, sh = panel[0] * cols, panel[1] * rows        # screen size, meters
-    grounded = kind in ("stand", "pole", "roundpole")
+    grounded = kind in ("stand", "pole", "roundpole", "bridge")
     wall_margin = 0.18 * max(sw, sh) if kind in ("wall", "round") else 0
     back = 0.12 * max(sw, sh) if double else 0        # second screen peeking out behind
 
@@ -219,6 +276,20 @@ def render(name, kind, panel, cols, rows, elevation, poles, diameter, double):
     top = elevation + sh
     pole_color = CONCRETE_COLOR if diameter >= 1 else STEEL_COLOR
     pw = max(SS * 5, diameter * scale)
+
+    if kind == "bridge":
+        # Bridge deck and railing behind the screen, wider than it, on two piers.
+        deck_top = elevation + sh * 1.15
+        x0, y0 = to_px(-0.04 * scene_w, deck_top)
+        x1, y1 = to_px(scene_w * 1.04, elevation + sh * 0.35)
+        d.rectangle((x0, y0, x1, y1), fill=CONCRETE_COLOR)
+        rail_y = y0 - max(SS * 3, sh * 0.25 * scale)
+        d.line((x0, rail_y, x1, rail_y), fill=STEEL_COLOR, width=max(2, SS * 2))
+        for k in range(9):
+            rx = x0 + (x1 - x0) * k / 8
+            d.line((rx, rail_y, rx, y0), fill=STEEL_COLOR, width=max(2, SS))
+        for px_ in (x0 + (x1 - x0) * 0.06, x1 - (x1 - x0) * 0.06):
+            d.rectangle((px_ - SS * 6, y1, px_ + SS * 6, ground_y), fill=CONCRETE_COLOR)
 
     def draw_screens(offset):
         x, y = to_px(offset, top + offset)

@@ -12,6 +12,9 @@ namespace LedScreens.Systems
     /// <summary>
     /// "LED Screen" section in the selected object panel. The UI module (LedScreens.mjs) renders
     /// it, keyed by this class's full name, and calls the triggers below to change the screen.
+    /// Screens in a road's tree spots can't be selected (clicks go to the road, which has no
+    /// panel), so the street panel (opened from the street name) gets the section instead: it
+    /// shows the first of the street's LED screens and every change applies to all of them.
     /// </summary>
     public partial class LedScreenSection : InfoSectionBase
     {
@@ -26,6 +29,13 @@ namespace LedScreens.Systems
         private readonly System.Collections.Generic.List<string> m_PlaylistItems = new System.Collections.Generic.List<string>();
         private string m_NowPlaying;
         private int m_MediaVersion;
+
+        // The screens the panel edits: the selected screen, or the LED screens along the selected street.
+        private readonly System.Collections.Generic.List<Entity> m_Targets = new System.Collections.Generic.List<Entity>();
+        private readonly System.Collections.Generic.HashSet<Entity> m_Seen = new System.Collections.Generic.HashSet<Entity>();
+        private bool m_RoadSelected;
+
+        private Entity Primary => m_Targets.Count > 0 ? m_Targets[0] : Entity.Null;
 
         protected override string group => nameof(LedScreenSection);
 
@@ -71,7 +81,57 @@ namespace LedScreens.Systems
 
         protected override void OnUpdate()
         {
-            visible = EntityManager.HasComponent<LedScreen>(selectedEntity);
+            CollectTargets();
+            visible = m_Targets.Count > 0;
+        }
+
+        private void CollectTargets()
+        {
+            m_Targets.Clear();
+            m_RoadSelected = false;
+            Entity selected = selectedEntity;
+            if (selected == Entity.Null || !EntityManager.Exists(selected))
+                return;
+            if (EntityManager.HasComponent<LedScreen>(selected))
+            {
+                m_Targets.Add(selected);
+                return;
+            }
+            // A street (selected through its name) is made of road segments; a segment can also be
+            // selected directly in some cases. Screens can sit on segments and their end nodes.
+            m_Seen.Clear();
+            if (EntityManager.TryGetBuffer(selected, isReadOnly: true, out DynamicBuffer<Game.Net.AggregateElement> segments))
+            {
+                for (int i = 0; i < segments.Length; i++)
+                    AddRoadScreens(segments[i].m_Edge);
+            }
+            else
+            {
+                AddRoadScreens(selected);
+            }
+            m_RoadSelected = m_Targets.Count > 0;
+        }
+
+        private void AddRoadScreens(Entity segment)
+        {
+            AddScreensOwnedBy(segment);
+            if (EntityManager.TryGetComponent<Game.Net.Edge>(segment, out var edge))
+            {
+                AddScreensOwnedBy(edge.m_Start);
+                AddScreensOwnedBy(edge.m_End);
+            }
+        }
+
+        private void AddScreensOwnedBy(Entity owner)
+        {
+            if (!EntityManager.TryGetBuffer(owner, isReadOnly: true, out DynamicBuffer<Game.Objects.SubObject> subObjects))
+                return;
+            for (int i = 0; i < subObjects.Length; i++)
+            {
+                Entity entity = subObjects[i].m_SubObject;
+                if (EntityManager.HasComponent<LedScreen>(entity) && !EntityManager.HasComponent<Game.Common.Deleted>(entity) && m_Seen.Add(entity))
+                    m_Targets.Add(entity);
+            }
         }
 
         protected override void OnPreUpdate()
@@ -84,10 +144,11 @@ namespace LedScreens.Systems
                 m_InfoUISystem.RequestUpdate();
             }
             // While a playlist runs, refresh the panel so "Now playing" follows the screen.
-            if (visible && m_Screen.m_Playlist != PlaylistMode.Off && EntityManager.Exists(selectedEntity) &&
-                EntityManager.TryGetComponent<LedScreen>(selectedEntity, out var screen))
+            Entity primary = Primary;
+            if (visible && m_Screen.m_Playlist != PlaylistMode.Off && primary != Entity.Null && EntityManager.Exists(primary) &&
+                EntityManager.TryGetComponent<LedScreen>(primary, out var screen))
             {
-                string playing = ScreenMediaResolver.Instance.Resolve(EntityManager, selectedEntity, screen, ScreenMediaResolver.Clock, out _, out _);
+                string playing = ScreenMediaResolver.Instance.Resolve(EntityManager, primary, screen, ScreenMediaResolver.Clock, out _, out _);
                 if (playing != m_NowPlaying)
                     m_InfoUISystem.RequestUpdate();
             }
@@ -95,7 +156,7 @@ namespace LedScreens.Systems
 
         protected override void OnProcess()
         {
-            Entity entity = selectedEntity;
+            Entity entity = Primary;
             EntityManager.TryGetComponent(entity, out m_Screen);
             if (EntityManager.TryGetBuffer(entity, isReadOnly: true, out DynamicBuffer<LedPlaylistItem> items))
             {
@@ -110,6 +171,8 @@ namespace LedScreens.Systems
             string media = m_Screen.m_Media.ToString();
             var available = MediaLibrary.Instance.Available;
 
+            writer.PropertyName("roadScreens");
+            writer.Write(m_RoadSelected ? m_Targets.Count : 0);
             writer.PropertyName("media");
             writer.Write(media);
             writer.PropertyName("nowPlaying");
@@ -151,13 +214,14 @@ namespace LedScreens.Systems
 
         private void Modify(ScreenEdit edit)
         {
-            Entity entity = selectedEntity;
-            if (entity == Entity.Null || !EntityManager.TryGetComponent<LedScreen>(entity, out var screen))
-                return;
-
-            edit(ref screen);
-            screen.m_Flags |= LedScreenFlags.Initialized;
-            EntityManager.SetComponentData(entity, screen);
+            foreach (Entity entity in m_Targets)
+            {
+                if (!EntityManager.TryGetComponent<LedScreen>(entity, out var screen))
+                    continue;
+                edit(ref screen);
+                screen.m_Flags |= LedScreenFlags.Initialized;
+                EntityManager.SetComponentData(entity, screen);
+            }
             m_InfoUISystem.RequestUpdate();
         }
 
@@ -172,40 +236,58 @@ namespace LedScreens.Systems
 
         private void TogglePlaylistItem(string media)
         {
-            Entity entity = selectedEntity;
-            if (entity == Entity.Null || string.IsNullOrEmpty(media) || !EntityManager.HasComponent<LedScreen>(entity))
+            if (string.IsNullOrEmpty(media) || m_Targets.Count == 0)
                 return;
 
-            // Screens get the buffer the first time something is ticked.
-            DynamicBuffer<LedPlaylistItem> items = EntityManager.HasBuffer<LedPlaylistItem>(entity)
-                ? EntityManager.GetBuffer<LedPlaylistItem>(entity)
-                : EntityManager.AddBuffer<LedPlaylistItem>(entity);
-
+            // Tick or untick on all targets, following the first one.
             var key = new LedPlaylistItem(media).m_Media;
-            for (int i = 0; i < items.Length; i++)
+            bool remove = IndexOf(Primary, key) >= 0;
+            foreach (Entity entity in m_Targets)
             {
-                if (items[i].m_Media == key)
+                if (!EntityManager.HasComponent<LedScreen>(entity))
+                    continue;
+                int index = IndexOf(entity, key);
+                if (remove && index >= 0)
                 {
-                    items.RemoveAt(i);
-                    m_InfoUISystem.RequestUpdate();
-                    return;
+                    EntityManager.GetBuffer<LedPlaylistItem>(entity).RemoveAt(index);
+                }
+                else if (!remove && index < 0)
+                {
+                    // Screens get the buffer the first time something is ticked.
+                    DynamicBuffer<LedPlaylistItem> items = EntityManager.HasBuffer<LedPlaylistItem>(entity)
+                        ? EntityManager.GetBuffer<LedPlaylistItem>(entity)
+                        : EntityManager.AddBuffer<LedPlaylistItem>(entity);
+                    items.Add(new LedPlaylistItem(media));
                 }
             }
-            items.Add(new LedPlaylistItem(media));
             m_InfoUISystem.RequestUpdate();
+        }
+
+        private int IndexOf(Entity entity, FixedString128Bytes media)
+        {
+            if (!EntityManager.TryGetBuffer(entity, isReadOnly: true, out DynamicBuffer<LedPlaylistItem> items))
+                return -1;
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i].m_Media == media)
+                    return i;
+            }
+            return -1;
         }
 
         private void ClearPlaylist()
         {
-            Entity entity = selectedEntity;
-            if (entity != Entity.Null && EntityManager.HasBuffer<LedPlaylistItem>(entity))
-                EntityManager.GetBuffer<LedPlaylistItem>(entity).Clear();
+            foreach (Entity entity in m_Targets)
+            {
+                if (EntityManager.HasBuffer<LedPlaylistItem>(entity))
+                    EntityManager.GetBuffer<LedPlaylistItem>(entity).Clear();
+            }
             m_InfoUISystem.RequestUpdate();
         }
 
         private void UseForNewScreens()
         {
-            if (Mod.Settings == null || !EntityManager.TryGetComponent<LedScreen>(selectedEntity, out var screen))
+            if (Mod.Settings == null || !EntityManager.TryGetComponent<LedScreen>(Primary, out var screen))
                 return;
             Mod.Settings.DefaultMedia = screen.m_Media.ToString();
             Mod.Settings.ApplyAndSave();

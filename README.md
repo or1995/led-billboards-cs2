@@ -12,7 +12,7 @@ Every screen plays your own media (**GIF, PNG, JPG or video**) and each one can 
 
 > ⚠️ **Experimental: use at your own risk and back up your saves.**
 >
-> Status: work in progress (v0.4). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
+> Status: work in progress (v0.4.5). Tested on game version 1.6.2 (PC / Xbox app). Available on [Paradox Mods](https://mods.paradoxplaza.com/mods/165337/Windows).
 > Built with the help of [Claude](https://claude.com/claude-code).
 
 ## Features

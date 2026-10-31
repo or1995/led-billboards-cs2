@@ -10,6 +10,11 @@ namespace LedScreens.Components
         Front = 1,
         Back = 2,
         Both = Front | Back,
+
+        /// <summary>The two sides at right angles to the front (screen cubes).</summary>
+        Left = 4,
+        Right = 8,
+        All = Front | Back | Left | Right,
     }
 
     /// <summary>

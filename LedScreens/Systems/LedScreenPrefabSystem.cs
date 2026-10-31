@@ -67,26 +67,39 @@ namespace LedScreens.Systems
         /// <summary>
         /// A grid of copies of the source panel with one continuous image across all of them.
         /// Either it stays on the wall like the source, or it stands on poles whose thickness
-        /// suits the size of the screen, optionally with a second grid back to back.
+        /// suits the size of the screen, optionally with a second grid back to back, or four
+        /// grids forming a cube.
         /// </summary>
         public sealed class Layout
         {
-            private Layout(int columns, int rows, int poles, float poleDiameter, float elevation, bool doubleSided)
+            private Layout(int columns, int rows, int poles, float poleDiameter, float elevation, int sides, bool freestanding)
             {
                 Columns = columns;
                 Rows = rows;
                 Poles = poles;
                 PoleDiameter = poleDiameter;
                 Elevation = elevation;
-                DoubleSided = doubleSided;
+                Sides = sides;
+                Freestanding = freestanding;
             }
 
             /// <summary>A grid that mounts on walls like the source panel.</summary>
-            public static Layout Wall(int columns, int rows) => new Layout(columns, rows, 0, 0f, 0f, false);
+            public static Layout Wall(int columns, int rows) => new Layout(columns, rows, 0, 0f, 0f, 1, false);
 
             /// <summary>A grid standing on poles, its bottom at the given height.</summary>
             public static Layout OnPoles(int columns, int rows, int poles, float poleDiameter, float elevation, bool doubleSided = false) =>
-                new Layout(columns, rows, poles, poleDiameter, elevation, doubleSided);
+                new Layout(columns, rows, poles, poleDiameter, elevation, doubleSided ? 2 : 1, true);
+
+            /// <summary>
+            /// Four grids forming an open-topped cube, its bottom at the given height: on a pole
+            /// inside the cube, or with no poles, hanging in the air (to put under an arch or bridge).
+            /// </summary>
+            public static Layout Cube(int columns, int rows, float elevation, int poles = 0, float poleDiameter = 0f) =>
+                new Layout(columns, rows, poles, poleDiameter, elevation, 4, true);
+
+            /// <summary>A grid in the air with nothing holding it, its bottom at the given height (e.g. along a bridge).</summary>
+            public static Layout Floating(int columns, int rows, float elevation, bool doubleSided = false) =>
+                new Layout(columns, rows, 0, 0f, elevation, doubleSided ? 2 : 1, true);
 
             public int Columns { get; }
             public int Rows { get; }
@@ -102,8 +115,13 @@ namespace LedScreens.Systems
             /// <summary>Height of the bottom of the panels above the ground, in meters.</summary>
             public float Elevation { get; }
 
-            /// <summary>A second grid faces the other way, with the poles between them.</summary>
-            public bool DoubleSided { get; }
+            /// <summary>Copies of the grid turned around the middle: 1, 2 (back to back) or 4 (a cube).</summary>
+            public int Sides { get; }
+
+            public bool DoubleSided => Sides == 2;
+
+            /// <summary>Stands on the ground at the elevation instead of mounting on walls.</summary>
+            public bool Freestanding { get; }
         }
 
         // The screen normally sits on the measured ad panel. Faces and insets are only used
@@ -220,6 +238,25 @@ namespace LedScreens.Systems
                 Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.2f, elevation: 2.6f, doubleSided: true), roadSide: true),
             new ScreenTemplate("BillboardRoundLarge01", "LedRoundPoleLarge01", "LED Round Sign on Pole (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
                 Layout.OnPoles(columns: 1, rows: 1, poles: 1, poleDiameter: 0.25f, elevation: 3.2f, doubleSided: true), roadSide: true),
+
+            // Bridge side screens: double-sided strips hanging in the air, to line up along the side
+            // of a pedestrian bridge. The bottom sits 1.2 m below a deck at the default 10 m elevation step.
+            new ScreenTemplate("BillboardWallMedium01", "LedBridgeSide4x1", "LED Bridge Side Screen (16 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Floating(columns: 4, rows: 1, elevation: 8.8f, doubleSided: true)),
+            new ScreenTemplate("BillboardWallMedium01", "LedBridgeSide6x1", "LED Bridge Side Screen (24 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Floating(columns: 6, rows: 1, elevation: 8.8f, doubleSided: true)),
+            new ScreenTemplate("BillboardWallMedium01", "LedBridgeSide8x1", "LED Bridge Side Screen (32 m)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Floating(columns: 8, rows: 1, elevation: 8.8f, doubleSided: true)),
+
+            // Screen cubes: four screens around an open-topped box
+            new ScreenTemplate("BillboardWallLarge01", "LedCubeHangingLarge", "LED Screen Cube (Hanging, Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Cube(columns: 1, rows: 1, elevation: 6.5f)),
+            new ScreenTemplate("BillboardWallMedium01", "LedCubeHangingMedium", "LED Screen Cube (Hanging, Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Cube(columns: 1, rows: 2, elevation: 5.5f)),
+            new ScreenTemplate("BillboardWallLarge01", "LedCubePoleLarge", "LED Screen Cube on Pole (Large)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Cube(columns: 1, rows: 1, elevation: 9f, poles: 1, poleDiameter: 1.4f)),
+            new ScreenTemplate("BillboardWallMedium01", "LedCubePoleMedium", "LED Screen Cube on Pole (Medium)", ScreenFaces.Front, 0.03f, 0.03f, 0.03f,
+                Layout.Cube(columns: 1, rows: 2, elevation: 3f, poles: 1, poleDiameter: 0.35f), roadSide: true),
         };
 
         // Clones must not inherit these: they would make the game spawn our screens on
@@ -534,8 +571,8 @@ namespace LedScreens.Systems
             float gridWidth = tileWidth * layout.Columns;
             float gridHeight = tileHeight * layout.Rows;
 
-            // Wall grids grow evenly around the source panel; pole grids start at the elevation.
-            float lift = layout.HasPoles
+            // Wall grids grow evenly around the source panel; free-standing ones start at the elevation.
+            float lift = layout.Freestanding
                 ? layout.Elevation - panelBounds.min.y
                 : -(layout.Rows - 1) * tileHeight * 0.5f;
 
@@ -556,30 +593,34 @@ namespace LedScreens.Systems
                 }
 
                 // Slim steel poles can't carry a wide screen alone; add more across the width.
+                // (A cube's pole stands hidden inside it.)
                 poleCount = layout.Poles;
-                if (pole.Kind == PoleKind.Steel)
+                if (pole.Kind == PoleKind.Steel && layout.Sides < 4)
                     poleCount = Math.Max(poleCount, (int)math.ceil(gridWidth / kSteelPoleSpacing));
             }
 
-            // Back of the panel: the bounds corner furthest against the screen normal.
-            float back = float.MaxValue;
+            // Back and front of the panel: the bounds corners furthest against and along the normal.
+            float back = float.MaxValue, frontMost = float.MinValue;
             for (int c = 0; c < 4; c++)
             {
                 var corner = new float3((c & 1) != 0 ? panelBounds.max.x : panelBounds.min.x, 0f, (c & 2) != 0 ? panelBounds.max.z : panelBounds.min.z);
                 back = math.min(back, math.dot(corner, normal));
+                frontMost = math.max(frontMost, math.dot(corner, normal));
             }
 
             // Trunk touching the back of the panel (slightly overlapping, so no gap shows). A
-            // double-sided screen is the grid plus a copy turned around the trunk's middle.
+            // double-sided screen is the grid plus a copy turned around the trunk's middle. A cube
+            // turns copies a quarter at a time around its centre, half the grid width behind the
+            // front, so the outer faces meet at the corners.
             float trunkRadius = pole != null ? pole.Diameter * 0.5f : 0f;
-            float behind = back - trunkRadius * 0.8f;
+            float behind = layout.Sides >= 4 ? frontMost - gridWidth * 0.5f : back - trunkRadius * 0.8f;
             float across = math.dot(panel.m_Center, right);
             float3 pivot = right * across + normal * behind;
-            quaternion turn = quaternion.RotateY(math.PI);
 
             var meshes = new List<ObjectMeshInfo>();
-            for (int side = 0; side < (layout.DoubleSided ? 2 : 1); side++)
+            for (int side = 0; side < layout.Sides; side++)
             {
+                quaternion turn = quaternion.RotateY(side * 2f * math.PI / layout.Sides);
                 for (int row = 0; row < layout.Rows; row++)
                 {
                     for (int column = 0; column < layout.Columns; column++)
@@ -589,7 +630,7 @@ namespace LedScreens.Systems
                         {
                             float3 position = info.m_Position + offset;
                             quaternion rotation = info.m_Rotation;
-                            if (side == 1)
+                            if (side > 0)
                             {
                                 position = pivot + math.mul(turn, position - pivot);
                                 rotation = math.mul(turn, rotation);
@@ -621,26 +662,28 @@ namespace LedScreens.Systems
                         m_RequireState = pole.Mesh.m_RequireState,
                     });
                 }
-                // Stand on the ground instead of snapping to walls.
-                clone.Remove(typeof(AttachedObject));
-                Mod.log.Info($"{template.Name}: {layout.Columns}x{layout.Rows} panel(s){(layout.DoubleSided ? " x2 back to back" : "")} at {layout.Elevation:0.0} m on {poleCount} x '{pole.Name}' ({pole.Kind}, trunk {pole.Diameter:0.00} m, wanted {layout.PoleDiameter:0.00}, sunk {sink:0.0} m)");
+                Mod.log.Info($"{template.Name}: {layout.Columns}x{layout.Rows} panel(s) x{layout.Sides} at {layout.Elevation:0.0} m on {poleCount} x '{pole.Name}' ({pole.Kind}, trunk {pole.Diameter:0.00} m, wanted {layout.PoleDiameter:0.00}, sunk {sink:0.0} m)");
             }
             else
             {
-                Mod.log.Info($"{template.Name}: {layout.Columns}x{layout.Rows} wall panels");
+                string where = layout.Freestanding ? $"at {layout.Elevation:0.0} m, no poles" : "on walls";
+                Mod.log.Info($"{template.Name}: {layout.Columns}x{layout.Rows} panel(s) x{layout.Sides} {where}");
             }
+            // Stand on the ground instead of snapping to walls.
+            if (layout.Freestanding)
+                clone.Remove(typeof(AttachedObject));
             clone.m_Meshes = meshes.ToArray();
 
             // One continuous screen over the whole grid (it also covers the frames between tiles).
             panel.m_Center += up * (lift + (layout.Rows - 1) * tileHeight * 0.5f);
             panel.m_Size += new float2((layout.Columns - 1) * tileWidth, (layout.Rows - 1) * tileHeight);
-            if (layout.DoubleSided)
+            if (layout.Sides > 1)
             {
-                // Centre on the turning plane; the two faces then sit at +/- the half depth.
+                // Centre on the turning axis; the faces then all sit the half depth away from it.
                 float front = math.dot(panel.m_Center, normal) + panel.m_HalfDepth;
                 panel.m_Center += normal * (behind - math.dot(panel.m_Center, normal));
                 panel.m_HalfDepth = front - behind;
-                panel.m_Faces = ScreenFaces.Both;
+                panel.m_Faces = layout.Sides >= 4 ? ScreenFaces.All : ScreenFaces.Both;
             }
             return true;
         }

@@ -49,6 +49,9 @@ namespace LedScreens.Systems
         // Round screens are drawn slightly inside the measured face so no corner of the image shows past its rim.
         private const float kRoundInset = 0.98f;
 
+        // Order of the faces in ScreenSurface, matching the ScreenFaces bits.
+        private static readonly ScreenFaces[] kFaceBits = { ScreenFaces.Front, ScreenFaces.Back, ScreenFaces.Left, ScreenFaces.Right };
+
         /// <summary>Screen placement in prefab-local space, derived from the mesh bounds.</summary>
         private struct ScreenSurface
         {
@@ -56,10 +59,10 @@ namespace LedScreens.Systems
             public ScreenFaces m_Faces;
             public bool m_Round;
             public float2 m_Size;
-            public float3 m_FrontCenter;
-            public float3 m_BackCenter;
-            public quaternion m_FrontRotation;
-            public quaternion m_BackRotation;
+
+            /// <summary>Per face (front, back, left, right): centre and rotation in prefab space.</summary>
+            public float3[] m_Centers;
+            public quaternion[] m_Rotations;
         }
 
         private readonly struct BatchKey : IEquatable<BatchKey>
@@ -102,6 +105,7 @@ namespace LedScreens.Systems
         private int m_SurfaceSettingsHash;
         private bool m_LoggedFirstDraw;
         private int m_Frame;
+        private readonly VisibleFace[] m_VisibleFaces = new VisibleFace[4];
 
         /// <summary>A face that passed culling, in world space.</summary>
         private struct VisibleFace
@@ -198,16 +202,20 @@ namespace LedScreens.Systems
                     if (!surface.m_Valid)
                         continue;
 
-                    VisibleFace frontFace = default, backFace = default;
-                    bool front = (surface.m_Faces & ScreenFaces.Front) != 0 &&
-                        TryCullFace(transform, surface.m_FrontCenter, surface.m_FrontRotation, surface.m_Size, cameraPosition, pixelScale, out frontFace);
-                    bool back = (surface.m_Faces & ScreenFaces.Back) != 0 &&
-                        TryCullFace(transform, surface.m_BackCenter, surface.m_BackRotation, surface.m_Size, cameraPosition, pixelScale, out backFace);
-                    if (!front && !back && unchecked((uint)(entities[i].Index + m_Frame)) % kHiddenRefreshFrames != 0)
+                    int visibleMask = 0;
+                    for (int f = 0; f < kFaceBits.Length; f++)
+                    {
+                        if ((surface.m_Faces & kFaceBits[f]) != 0 &&
+                            TryCullFace(transform, surface.m_Centers[f], surface.m_Rotations[f], surface.m_Size, cameraPosition, pixelScale, out m_VisibleFaces[f]))
+                        {
+                            visibleMask |= 1 << f;
+                        }
+                    }
+                    if (visibleMask == 0 && unchecked((uint)(entities[i].Index + m_Frame)) % kHiddenRefreshFrames != 0)
                         continue;
 
                     var screen = screens[i];
-                    if (!front && !back)
+                    if (visibleMask == 0)
                     {
                         if ((screen.m_Flags & LedScreenFlags.Initialized) != 0)
                             library.Touch(resolver.Resolve(EntityManager, entities[i], screen, time, out _, out _), ScreenMediaResolver.Effect(screen), now);
@@ -235,10 +243,11 @@ namespace LedScreens.Systems
 
                     int brightness = (int)math.round(screen.m_Brightness * settings.Brightness * mediaBrightness * 100f);
 
-                    if (front)
-                        AddFace(frontFace, surface.m_Size, surface.m_Round, texture, brightness);
-                    if (back)
-                        AddFace(backFace, surface.m_Size, surface.m_Round, texture, brightness);
+                    for (int f = 0; f < kFaceBits.Length; f++)
+                    {
+                        if ((visibleMask & (1 << f)) != 0)
+                            AddFace(m_VisibleFaces[f], surface.m_Size, surface.m_Round, texture, brightness);
+                    }
                 }
             }
 
@@ -399,17 +408,29 @@ namespace LedScreens.Systems
                 case ScreenFacesOverride.Both: faces = ScreenFaces.Both; break;
             }
 
+            // Cubes: the side faces are as far from the centre as the front, at right angles.
+            float3 right = math.normalize(math.cross(up, normal));
             return new ScreenSurface
             {
                 m_Valid = true,
                 m_Faces = faces,
                 m_Round = data.m_Round,
                 m_Size = new float2(width, height),
-                m_FrontCenter = faceCenter + normal * distance,
-                m_BackCenter = faceCenter - normal * backDistanceTotal,
-                // The quad's visible side is its local -Z, so it looks along -normal to face +normal.
-                m_FrontRotation = quaternion.LookRotation(-normal, up),
-                m_BackRotation = quaternion.LookRotation(normal, up),
+                m_Centers = new[]
+                {
+                    faceCenter + normal * distance,
+                    faceCenter - normal * backDistanceTotal,
+                    faceCenter - right * distance,
+                    faceCenter + right * distance,
+                },
+                // The quad's visible side is its local -Z, so it looks along -dir to face dir.
+                m_Rotations = new[]
+                {
+                    quaternion.LookRotation(-normal, up),
+                    quaternion.LookRotation(normal, up),
+                    quaternion.LookRotation(right, up),
+                    quaternion.LookRotation(-right, up),
+                },
             };
         }
 
